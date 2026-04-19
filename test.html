@@ -724,6 +724,34 @@
             return false;
         }
 
+        /** BFS 可达性检查（考虑临时黄门） */
+        _bfsReachableWithYellowDoors(sx, sy, tx, ty, size, yellowDoors) {
+            if (sx === tx && sy === ty) return true;
+            var seen = [];
+            for (var i = 0; i < size; i++) {
+                seen[i] = [];
+                for (var j = 0; j < size; j++) seen[i][j] = false;
+            }
+            var q = [{ x: sx, y: sy }];
+            seen[sy][sx] = true;
+            while (q.length > 0) {
+                var c = q.shift();
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[c.y][c.x][d]) continue;
+                    var nx = c.x + DIR_DX[d];
+                    var ny = c.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (seen[ny][nx]) continue;
+                    // 检查临时黄门是否阻挡（进入ny,nx格子的方向d被挡）
+                    if (yellowDoors[ny][nx][d]) continue;
+                    seen[ny][nx] = true;
+                    if (nx === tx && ny === ty) return true;
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return false;
+        }
+
         _bfsPathCellList(sx, sy, tx, ty, size) {
             if (sx === tx && sy === ty) return [{ x: sx, y: sy }];
             var seen = [];
@@ -1546,7 +1574,7 @@
             for (var i = 0; i < this.solutionPath.length; i++) {
                 solSet[this.solutionPath[i].x + ',' + this.solutionPath[i].y] = true;
             }
-            // 黄门格 = ox, oy（门放在这里）
+            // 黄门格 = ox, oy（门放在这里），阻挡从oy,ox回到doorCell的方向
             var doorX = ox, doorY = oy;
 
             // 收集所有候选格子（可达的非主路格子）
@@ -1564,9 +1592,20 @@
             for (var i = 0; i < candidates.length; i++) {
                 var btn = candidates[i];
 
-                // 约束3：出生点不能直接走到终点（黄门关闭时终点不可达）
-                if (this._bfsReachable(this.start.x, this.start.y, this.end.x, this.end.y, size)) {
-                    // 起点居然能走到终点，说明黄门没有挡在主路上，这个门位置不合格
+                // 约束3：临时放置这个黄门，检查起点是否还能到达终点
+                // 黄门阻挡方向：oy,ox 格子的 OPP_ENTRY[chosenDir] 方向（回顾doorCell的方向）
+                // 即玩家从 doorCell → (ox,oy) 时被挡
+                var tempYellowDoors = [];
+                for (var ty = 0; ty < size; ty++) {
+                    tempYellowDoors[ty] = [];
+                    for (var tx = 0; tx < size; tx++) {
+                        tempYellowDoors[ty][tx] = [false, false, false, false];
+                    }
+                }
+                tempYellowDoors[oy][ox][OPP_ENTRY[chosenDir]] = true;
+
+                if (this._bfsReachableWithYellowDoors(this.start.x, this.start.y, this.end.x, this.end.y, size, tempYellowDoors)) {
+                    // 黄门关闭后，起点居然还能走到终点，说明这个黄门没有有效挡住主路
                     continue;
                 }
 
