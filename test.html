@@ -790,6 +790,31 @@
             return null;
         }
 
+        /**
+         * 检查黄门关闭后，原 solutionPath 是否还能完整通过（逐段验证）
+         * 如果整条 solutionPath 的每一步都被黄门阻断，返回 true（门有效挡住了主路）
+         * 如果还能通过，返回 false（门没有挡住主路）
+         */
+        _pathIsBlocked(tempYellowDoors, size) {
+            var rawPath = this._bfsPathCellList(this.start.x, this.start.y, this.end.x, this.end.y, size);
+            if (!rawPath || rawPath.length < 2) return false;
+
+            for (var i = 0; i < rawPath.length - 1; i++) {
+                var a = rawPath[i];
+                var b = rawPath[i + 1];
+                var dx = b.x - a.x;
+                var dy = b.y - a.y;
+                var wi = getWallIndex(dx, dy);
+                if (wi < 0) continue;
+                if (this.maze[a.y][a.x][wi]) continue;
+                var opp = OPP_ENTRY[wi];
+                if (tempYellowDoors[b.y][b.x][opp]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /** 在仍为树的迷宫中，若两格相邻且墙封闭但已绕路连通，则打通一条墙形成唯一环；供回程边/单向放置 */
         _maybeAddRandomCycle() {
             this._cycleChord = null;
@@ -1618,9 +1643,7 @@
             for (var i = 0; i < candidates.length; i++) {
                 var btn = candidates[i];
 
-                // 约束3：临时放置这个黄门，检查起点是否还能到达终点
-                // 黄门阻挡方向：oy,ox 格子的 OPP_ENTRY[chosenDir] 方向（回顾doorCell的方向）
-                // 即玩家从 doorCell → (ox,oy) 时被挡
+                // 约束3：临时放置这个黄门，用 BFS 获取实际路径，逐段验证是否被挡
                 var tempYellowDoors = [];
                 for (var ty = 0; ty < size; ty++) {
                     tempYellowDoors[ty] = [];
@@ -1630,8 +1653,10 @@
                 }
                 tempYellowDoors[oy][ox][OPP_ENTRY[chosenDir]] = true;
 
-                if (this._bfsReachableWithYellowDoors(this.start.x, this.start.y, this.end.x, this.end.y, size, tempYellowDoors)) {
-                    // 黄门关闭后，起点居然还能走到终点，说明这个黄门没有有效挡住主路
+                if (!this._pathIsBlocked(tempYellowDoors, size)) {
+                    // 黄门关闭后，居然还存在一条可行路径，说明这个黄门没有有效挡住主路
+                    continue;
+                }
                     continue;
                 }
 
