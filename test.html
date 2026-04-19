@@ -1427,39 +1427,41 @@
         _addYellowMechanism() {
             var size = this.getLevelMazeSize();
             var solPath = this.solutionPath;
-            if (!solPath || solPath.length < 3) return;
+            if (!solPath || solPath.length < 3) {
+                console.log('[yellow] no solution path, skip'); return;
+            }
 
             // 1. 识别主路上的分叉口
             var junctions = this._findJunctionsOnSolution(solPath);
+            console.log('[yellow] junctions count=' + junctions.length + ', size=' + size);
             if (junctions.length === 0) return;
 
             // 2. 按尺寸规则确定黄门数量和位置
             var maxDoors;
             var doorPositions;
-            
+
             if (size < 12) {
-                // 只在最后一个分叉口
                 maxDoors = Math.min(2, junctions.length);
                 doorPositions = [junctions[junctions.length - 1]];
             } else if (size < 16) {
-                // 倒数第一/第二个分叉口
                 maxDoors = Math.min(2, junctions.length);
                 doorPositions = junctions.slice(-2);
             } else {
-                // 倒数第一/二/三分叉口
                 maxDoors = Math.min(3, junctions.length);
                 doorPositions = junctions.slice(-3);
             }
             doorPositions = doorPositions.slice(0, maxDoors);
+            console.log('[yellow] doorPositions count=' + doorPositions.length);
             if (doorPositions.length === 0) return;
 
             // 3. 一次BFS预计算：从起点可达的非主路格子集合
             var reachableFromStart = this._computeReachableFromStart();
+            console.log('[yellow] reachableFromStart size=' + Object.keys(reachableFromStart).length);
 
             // 4. 为每个黄门配对按钮
             for (var i = 0; i < doorPositions.length; i++) {
                 var doorCell = doorPositions[i];
-                
+
                 // 找该格子所有可通行的方向（作为门的方向）
                 var doorDirs = [];
                 for (var dir = 0; dir < 4; dir++) {
@@ -1473,9 +1475,30 @@
                 var ox = doorCell.x + DIR_DX[chosenDir];
                 var oy = doorCell.y + DIR_DY[chosenDir];
 
+                // 检查黄门是否在主路上
+                var doorOnMainPath = false;
+                for (var pi = 0; pi < this.solutionPath.length - 1; pi++) {
+                    var a = this.solutionPath[pi];
+                    var b = this.solutionPath[pi + 1];
+                    if ((a.x === doorCell.x && a.y === doorCell.y && b.x === ox && b.y === oy) ||
+                        (a.x === ox && a.y === oy && b.x === doorCell.x && b.y === doorCell.y)) {
+                        doorOnMainPath = true;
+                        break;
+                    }
+                }
+                if (!doorOnMainPath) {
+                    console.log('[yellow] door at (' + ox + ',' + oy + ') not on main path, skip');
+                    continue;
+                }
+
                 // 寻找按钮位置：必须满足4个约束
                 var buttonPos = this._findButtonInReachableArea(reachableFromStart, doorCell, chosenDir, ox, oy);
-                if (!buttonPos) continue;
+                if (!buttonPos) {
+                    console.log('[yellow] no valid button found for door at (' + ox + ',' + oy + ')');
+                    continue;
+                }
+
+                console.log('[yellow] placed door at (' + ox + ',' + oy + ') button at (' + buttonPos.x + ',' + buttonPos.y + ')');
 
                 // 放置黄门和按钮
                 this.yellowDoors[oy][ox][OPP_ENTRY[chosenDir]] = true;
