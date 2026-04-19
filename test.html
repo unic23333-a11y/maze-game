@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>走迷宫小游戏 v0.1.8 — 机制累加·尺寸递减</title>
+    <title>走迷宫小游戏 v0.7.0 — 机制累加·尺寸递减</title>
     <style>
         body {
             margin: 0;
@@ -397,7 +397,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>走迷宫小游戏 <small style="font-size:0.5em;color:#888;">v0.1.8</small></h1>
+        <h1>走迷宫小游戏 <small style="font-size:0.5em;color:#888;">v0.7.0</small></h1>
         <div class="subtitle">
             方向键或 WASD 移动。<strong style="color:#4361ee;">蓝墙</strong>不可通行。<br>
             <strong style="color:#ffd166;">黄门</strong>：堵住主路分叉口，需踩<strong style="color:#ffd166;">黄按钮</strong>打开（按钮在主路上，黄门后）。<br>
@@ -588,7 +588,7 @@
         </div>
 
         <div class="footer">
-            迷宫生成算法：递归回溯 | v0.1.8 — 机制累加 + 尺寸递减；本关重开 / 新迷宫
+            迷宫生成算法：递归回溯 | v0.7.0 — 机制累加 + 尺寸递减；本关重开 / 新迷宫
         </div>
     </div>
 
@@ -597,7 +597,7 @@
     //  走迷宫小游戏 v0.7.0 — 机制累加 + 尺寸递减
     // ============================================================
 
-    const VERSION = '0.1.8';
+    const VERSION = '0.7.0';
 
     var DIR_DX = [0, 1, 0, -1];
     var DIR_DY = [-1, 0, 1, 0];
@@ -690,13 +690,15 @@
             return this.currentLevel >= 6;
         }
 
-        /** 关卡 → 迷宫边长（每 3 关一个周期；每周期递增后递减；最长 20 格） */
+        /** 关卡 → 迷宫边长（每 3 关一个周期：周期首关尺寸-1，周期内递增） */
         getLevelMazeSize() {
-            // 例：1→8, 2→9, 3→10, 4→9, 5→10, 6→11, 7→10, 8→11, 9→12, 10→11, 11→12, 12→13, 13→12 ...
-            // 公式：7 + ceil((level+2)/2) - (level%2===0?1:0)
-            var size = 7 + Math.ceil((this.currentLevel + 2) / 2);
-            if (this.currentLevel % 2 === 0) size -= 1;
-            return Math.min(20, size);
+            // size = 8 + period + offset
+            // period = floor((level-1)/3)  // 周期索引
+            // offset = (level-1) % 3       // 周期内位置
+            var period = Math.floor((this.currentLevel - 1) / 3);
+            var offset = (this.currentLevel - 1) % 3;
+            var size = 8 + period + offset;
+            return Math.min(20, size);  // 上限 20×20
         }
 
         _bfsReachable(sx, sy, tx, ty, size) {
@@ -1442,8 +1444,8 @@
                 var ox = doorCell.x + DIR_DX[chosenDir];
                 var oy = doorCell.y + DIR_DY[chosenDir];
 
-                // 寻找按钮位置：必须满足4个约束
-                var buttonPos = this._findButtonInReachableArea(reachableFromStart, doorCell, chosenDir, ox, oy);
+                // 寻找按钮位置：非主路 && 起点可达
+                var buttonPos = this._findButtonInReachableArea(reachableFromStart, doorCell, chosenDir);
                 if (!buttonPos) continue;
 
                 // 放置黄门和按钮
@@ -1531,21 +1533,10 @@
 
         /**
          * 从预计算的可达集合中寻找按钮位置
-         * 4个约束：
-         *   1. 按钮不在主路上
-         *   2. 出生点能走到按钮
-         *   3. 出生点不能直接走到终点（黄门必须挡住唯一通路）
-         *   4. 黄门消失后，从按钮可以走到终点
          */
-        _findButtonInReachableArea(reachableSet, doorCell, chosenDir, ox, oy) {
+        _findButtonInReachableArea(reachableSet, doorCell, doorDir) {
             var size = this.getLevelMazeSize();
-            var solSet = {};
-            for (var i = 0; i < this.solutionPath.length; i++) {
-                solSet[this.solutionPath[i].x + ',' + this.solutionPath[i].y] = true;
-            }
-            // 黄门格 = ox, oy（门放在这里）
-            var doorX = ox, doorY = oy;
-
+            
             // 收集所有候选格子（可达的非主路格子）
             var candidates = [];
             for (var key in reachableSet) {
@@ -1553,60 +1544,48 @@
                 var x = parseInt(parts[0]), y = parseInt(parts[1]);
                 candidates.push({ x: x, y: y });
             }
-
+            
             if (candidates.length === 0) return null;
             this._shuffle(candidates);
 
-            // 检查每个候选：必须满足全部4个约束
+            // 检查每个候选：是否会被该黄门阻挡
             for (var i = 0; i < candidates.length; i++) {
                 var btn = candidates[i];
-
-                // 约束3：出生点不能直接走到终点（黄门关闭时终点不可达）
-                if (this._bfsReachable(this.start.x, this.start.y, this.end.x, this.end.y, size)) {
-                    // 起点居然能走到终点，说明黄门没有挡在主路上，这个门位置不合格
-                    continue;
+                if (this._isReachableWithoutDoor(btn.x, btn.y, doorCell, doorDir)) {
+                    return btn;
                 }
-
-                // 约束2：出生点能走到按钮
-                if (!this._bfsReachable(this.start.x, this.start.y, btn.x, btn.y, size)) {
-                    continue;
-                }
-
-                // 约束1已满足（候选来自 reachableSet，不在主路上）
-
-                // 约束4：黄门消失后，从按钮可以走到终点
-                if (!this._buttonCanReachEndAfterDoorOpen(btn.x, btn.y, doorX, doorY, size)) {
-                    continue;
-                }
-
-                return btn;
             }
             return null;
         }
 
         /**
-         * 黄门消失后，从按钮可以走到终点
-         * BFS：忽略黄门（因为门已打开），检查 btn → 终点 是否可达
+         * 检查格子(x,y)是否可以在不经过doorCell的情况下从起点到达
          */
-        _buttonCanReachEndAfterDoorOpen(btnX, btnY, doorX, doorY, size) {
-            var seen = [];
+        _isReachableWithoutDoor(bx, by, doorCell, doorDir) {
+            var size = this.getLevelMazeSize();
+            var visited = [];
             for (var y = 0; y < size; y++) {
-                seen[y] = [];
-                for (var x = 0; x < size; x++) seen[y][x] = false;
+                visited[y] = [];
+                for (var x = 0; x < size; x++) visited[y][x] = false;
             }
-            var q = [{ x: btnX, y: btnY }];
-            seen[btnY][btnX] = true;
+
+            var q = [{ x: this.start.x, y: this.start.y }];
+            visited[this.start.y][this.start.x] = true;
 
             while (q.length > 0) {
                 var c = q.shift();
-                if (c.x === this.end.x && c.y === this.end.y) return true;
+                if (c.x === bx && c.y === by) return true;
                 for (var d = 0; d < 4; d++) {
                     if (this.maze[c.y][c.x][d]) continue;
                     var nx = c.x + DIR_DX[d], ny = c.y + DIR_DY[d];
                     if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
-                    if (seen[ny][nx]) continue;
-                    // 黄门已消失，不再检查 yellowDoors
-                    seen[ny][nx] = true;
+                    if (visited[ny][nx]) continue;
+                    // 检查是否经过目标黄门
+                    if (nx === doorCell.x && ny === doorCell.y) {
+                        var oppDir = OPP_ENTRY[d];
+                        if (oppDir === doorDir) continue;  // 会触发黄门，不允许
+                    }
+                    visited[ny][nx] = true;
                     q.push({ x: nx, y: ny });
                 }
             }
@@ -2364,12 +2343,11 @@
             this.endTime = Date.now();
             var timeTaken = ((this.endTime - this.startTime) / 1000).toFixed(2);
             var levelInfo = '第 ' + this.currentLevel + ' 关';
-            // 直接显示通关状态，1.5秒后自动进入下一关
             var self = this;
             document.getElementById('status').innerHTML =
-                '<span class="win-message">🎉 ' + levelInfo + '通关！用时: ' + timeTaken + '秒</span>';
+                '<span class="win-message">🎉 ' + levelInfo + '通关！用时: ' + timeTaken + '秒 | <button type="button" id="nextLevelBtn" style="background:#4ade80;border:none;padding:5px 15px;border-radius:5px;cursor:pointer;font-weight:bold;color:#1a1a2e;">下一关 ➡</button></span>';
+            // 事件委托已在 setupEventListeners 中绑定，无需重复
             this.draw();
-            setTimeout(function() { self.nextLevel(); }, 1500);
         }
 
         nextLevel() {
@@ -2550,6 +2528,17 @@
                 }
                 e.preventDefault();
             }, { passive: false });
+
+            // 事件委托：status 区域的按钮点击（防覆盖）
+            var statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.addEventListener('click', function(e) {
+                    // 只处理 nextLevelBtn 点击
+                    if (e.target && e.target.id === 'nextLevelBtn') {
+                        self.nextLevel();
+                    }
+                });
+            }
         }
 
         // ==================== 工具方法 ====================
