@@ -805,11 +805,11 @@
                 var dx = b.x - a.x;
                 var dy = b.y - a.y;
                 var wi = getWallIndex(dx, dy);
-                if (wi < 0) continue;
-                if (this.maze[a.y][a.x][wi]) continue;
-                var opp = OPP_ENTRY[wi];
-                if (tempYellowDoors[b.y][b.x][opp]) {
-                    return true;
+                if (wi >= 0 && !this.maze[a.y][a.x][wi]) {
+                    var opp = OPP_ENTRY[wi];
+                    if (tempYellowDoors[b.y][b.x][opp]) {
+                        return true;
+                    }
                 }
             }
             return false;
