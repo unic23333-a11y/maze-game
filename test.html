@@ -1462,34 +1462,37 @@
             for (var i = 0; i < doorPositions.length; i++) {
                 var doorCell = doorPositions[i];
 
-                // 找该格子所有可通行的方向（作为门的方向）
-                var doorDirs = [];
+                // 找所有在主路上的相邻格（这些格都可以放黄门）
+                var mainPathNeighbors = [];
                 for (var dir = 0; dir < 4; dir++) {
-                    if (this.maze[doorCell.y][doorCell.x][dir]) continue;  // 物理墙不能放
-                    doorDirs.push(dir);
-                }
-                if (doorDirs.length === 0) continue;
-
-                // 随机选一个方向作为黄门
-                var chosenDir = doorDirs[Math.floor(Math.random() * doorDirs.length)];
-                var ox = doorCell.x + DIR_DX[chosenDir];
-                var oy = doorCell.y + DIR_DY[chosenDir];
-
-                // 检查黄门是否在主路上
-                var doorOnMainPath = false;
-                for (var pi = 0; pi < this.solutionPath.length - 1; pi++) {
-                    var a = this.solutionPath[pi];
-                    var b = this.solutionPath[pi + 1];
-                    if ((a.x === doorCell.x && a.y === doorCell.y && b.x === ox && b.y === oy) ||
-                        (a.x === ox && a.y === oy && b.x === doorCell.x && b.y === doorCell.y)) {
-                        doorOnMainPath = true;
-                        break;
+                    if (this.maze[doorCell.y][doorCell.x][dir]) continue;  // 物理墙
+                    var nx = doorCell.x + DIR_DX[dir];
+                    var ny = doorCell.y + DIR_DY[dir];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    // 检查这个相邻格是否在主路上
+                    var neighborOnMain = false;
+                    for (var pi = 0; pi < this.solutionPath.length - 1; pi++) {
+                        var a = this.solutionPath[pi];
+                        var b = this.solutionPath[pi + 1];
+                        if ((a.x === doorCell.x && a.y === doorCell.y && b.x === nx && b.y === ny) ||
+                            (a.x === nx && a.y === ny && b.x === doorCell.x && b.y === doorCell.y)) {
+                            neighborOnMain = true;
+                            break;
+                        }
+                    }
+                    if (neighborOnMain) {
+                        mainPathNeighbors.push({ dir: dir, nx: nx, ny: ny });
                     }
                 }
-                if (!doorOnMainPath) {
-                    console.log('[yellow] door at (' + ox + ',' + oy + ') not on main path, skip');
+                if (mainPathNeighbors.length === 0) {
+                    console.log('[yellow] doorCell (' + doorCell.x + ',' + doorCell.y + ') has no main-path neighbor, skip');
                     continue;
                 }
+
+                // 随机选一个相邻格作为黄门位置
+                var chosen = mainPathNeighbors[Math.floor(Math.random() * mainPathNeighbors.length)];
+                var ox = chosen.nx, oy = chosen.ny;
+                var chosenDir = chosen.dir;
 
                 // 寻找按钮位置：必须满足4个约束
                 var buttonPos = this._findButtonInReachableArea(reachableFromStart, doorCell, chosenDir, ox, oy);
