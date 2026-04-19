@@ -924,7 +924,9 @@
         // ==================== 迷宫生成 ====================
 
         generateMaze() {
+            console.log('[generateMaze] called, currentLevel=' + this.currentLevel);
             var size = this.getLevelMazeSize();
+            console.log('[generateMaze] maze size=' + size);
 
             // 用显式循环初始化迷宫，避免 Array.from 兼容性问题
             this.maze = [];
@@ -2366,17 +2368,25 @@
             var levelInfo = '第 ' + this.currentLevel + ' 关';
             // 直接显示通关状态，1.5秒后自动进入下一关
             var self = this;
+            console.log('[handleWin] currentLevel=' + this.currentLevel + ', gameWon=' + this.gameWon);
             document.getElementById('status').innerHTML =
                 '<span class="win-message">🎉 ' + levelInfo + '通关！用时: ' + timeTaken + '秒</span>';
             this.draw();
-            setTimeout(function() { self.nextLevel(); }, 1500);
+            setTimeout(function() {
+                console.log('[setTimeout nextLevel] currentLevel before=' + self.currentLevel);
+                self.nextLevel();
+            }, 1500);
         }
 
         nextLevel() {
+            console.log('[nextLevel] called, currentLevel before=' + this.currentLevel + ', gameWon=' + this.gameWon);
             this.currentLevel++;
+            console.log('[nextLevel] currentLevel after=' + this.currentLevel);
             this.gameWon = false;
             this.fogEnabled = true;
+            console.log('[nextLevel] calling generateMaze...');
             this.generateMaze();
+            console.log('[nextLevel] generateMaze done, calling draw and updateStatus');
             this.draw();
             this.updateStatus();
         }
