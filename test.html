@@ -924,9 +924,7 @@
         // ==================== 迷宫生成 ====================
 
         generateMaze() {
-            console.log('[generateMaze] called, currentLevel=' + this.currentLevel);
             var size = this.getLevelMazeSize();
-            console.log('[generateMaze] maze size=' + size);
 
             // 用显式循环初始化迷宫，避免 Array.from 兼容性问题
             this.maze = [];
@@ -1362,18 +1360,21 @@
             this.doorArrows = [];
 
             // 恢复黄色门模板（本关重开保持相同布局）
-            if (this._yellowDoorsTemplate && this.yellowMechanismUnlocked()) {
-                var sz3 = this.getLevelMazeSize();
-                for (var ry = 0; ry < sz3; ry++) {
-                    for (var rx = 0; rx < sz3; rx++) {
-                        this.yellowDoors[ry][rx] = this._yellowDoorsTemplate[ry][rx].slice();
-                        // 按钮需要重置active状态
-                        if (this._yellowButtonsTemplate[ry][rx]) {
+            // 注意：仅当模板存在且尺寸匹配时才恢复（生成过程中模板未创建，不能恢复）
+            if (this._yellowDoorsTemplate &&
+                this.yellowMechanismUnlocked() &&
+                this._yellowDoorsTemplate.length === sz) {
+                for (var ry = 0; ry < sz; ry++) {
+                    for (var rx = 0; rx < sz; rx++) {
+                        this.yellowDoors[ry][rx] = this._yellowDoorsTemplate[ry] && this._yellowDoorsTemplate[ry][rx]
+                            ? this._yellowDoorsTemplate[ry][rx].slice()
+                            : [false, false, false, false];
+                        if (this._yellowButtonsTemplate[ry] && this._yellowButtonsTemplate[ry][rx]) {
                             this.yellowButtons[ry][rx] = {
                                 targetX: this._yellowButtonsTemplate[ry][rx].targetX,
                                 targetY: this._yellowButtonsTemplate[ry][rx].targetY,
                                 dir: this._yellowButtonsTemplate[ry][rx].dir,
-                                active: false  // 重置为未激活
+                                active: false
                             };
                         } else {
                             this.yellowButtons[ry][rx] = null;
@@ -2355,10 +2356,10 @@
         }
 
         handleWin() {
-            if (this.gameWon) return;  // 防重复调用
+            if (this.gameWon) return;
             this.gameWon = true;
-            this.animating = false;  // 停止动画循环标志
-            if (this.animFrameId) {  // 取消待处理的动画帧
+            this.animating = false;
+            if (this.animFrameId) {
                 cancelAnimationFrame(this.animFrameId);
                 this.animFrameId = null;
             }
@@ -2366,27 +2367,18 @@
             this.endTime = Date.now();
             var timeTaken = ((this.endTime - this.startTime) / 1000).toFixed(2);
             var levelInfo = '第 ' + this.currentLevel + ' 关';
-            // 直接显示通关状态，1.5秒后自动进入下一关
             var self = this;
-            console.log('[handleWin] currentLevel=' + this.currentLevel + ', gameWon=' + this.gameWon);
             document.getElementById('status').innerHTML =
                 '<span class="win-message">🎉 ' + levelInfo + '通关！用时: ' + timeTaken + '秒</span>';
             this.draw();
-            setTimeout(function() {
-                console.log('[setTimeout nextLevel] currentLevel before=' + self.currentLevel);
-                self.nextLevel();
-            }, 1500);
+            setTimeout(function() { self.nextLevel(); }, 1500);
         }
 
         nextLevel() {
-            console.log('[nextLevel] called, currentLevel before=' + this.currentLevel + ', gameWon=' + this.gameWon);
             this.currentLevel++;
-            console.log('[nextLevel] currentLevel after=' + this.currentLevel);
             this.gameWon = false;
             this.fogEnabled = true;
-            console.log('[nextLevel] calling generateMaze...');
             this.generateMaze();
-            console.log('[nextLevel] generateMaze done, calling draw and updateStatus');
             this.draw();
             this.updateStatus();
         }
