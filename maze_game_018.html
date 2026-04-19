@@ -1,0 +1,2575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>走迷宫小游戏 v0.1.8 — 机制累加·尺寸递减</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            color: #4cc9f0;
+            text-shadow: 0 0 10px rgba(76, 201, 240, 0.5);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #b8b8d1;
+            margin-bottom: 20px;
+        }
+        .game-container {
+            position: relative;
+            margin: 20px auto;
+            border: 3px solid #4cc9f0;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(76, 201, 240, 0.3);
+            background-color: #0d1117;
+            display: inline-block; /* 防止 clientWidth 为 0 */
+        }
+        canvas {
+            display: block;
+            background-color: #0d1117;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 10px;
+            border: 1px solid #4cc9f0;
+        }
+        .control-info {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .control-item {
+            margin: 5px 10px;
+        }
+        .key {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #2d3748;
+            border: 1px solid #4cc9f0;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #4cc9f0;
+            min-width: 40px;
+        }
+        .buttons {
+            margin-top: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background: linear-gradient(135deg, #4cc9f0 0%, #4361ee 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #3aa8d0 0%, #3a56d4 100%);
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 10px;
+            border: 1px solid #4cc9f0;
+            text-align: left;
+            max-width: 600px;
+            display: none;
+        }
+        .instructions h3 {
+            color: #4cc9f0;
+            margin-top: 0;
+        }
+        .instructions ul {
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .status {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #f72585;
+            font-weight: bold;
+            min-height: 27px;
+        }
+        .win-message {
+            color: #4ade80;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        .footer {
+            margin-top: 20px;
+            color: #b8b8d1;
+            font-size: 14px;
+        }
+        .instructions-toggle {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .instructions.visible {
+            display: block;
+        }
+        .position-selectors {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 8px;
+            border: 1px solid #4361ee;
+        }
+        .position-selector {
+            margin: 5px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .position-selector label {
+            margin-bottom: 5px;
+            color: #b8b8d1;
+            font-size: 14px;
+        }
+        .position-selector select {
+            padding: 8px 12px;
+            background: #2d3748;
+            color: white;
+            border: 1px solid #4cc9f0;
+            border-radius: 5px;
+            font-size: 14px;
+            min-width: 120px;
+            cursor: pointer;
+        }
+        .position-selector select:focus {
+            outline: none;
+            border-color: #f72585;
+            box-shadow: 0 0 5px rgba(247, 37, 133, 0.5);
+        }
+
+        /* 面板样式 */
+        .settings-panel, .hints-panel {
+            margin-top: 20px;
+            padding: 0;
+            background: rgba(30, 30, 46, 0.95);
+            border-radius: 10px;
+            border: 2px solid #4cc9f0;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            position: relative;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(76, 201, 240, 0.1);
+            border-bottom: 1px solid #4cc9f0;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .panel-header h3 {
+            color: #4cc9f0;
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .close-panel {
+            background: transparent;
+            border: none;
+            color: #f72585;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+        .close-panel:hover {
+            background: rgba(247, 37, 133, 0.2);
+        }
+
+        .panel-content {
+            padding: 20px;
+        }
+
+        .fog-setting, .hint-option {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 8px;
+            border: 1px solid #4361ee;
+        }
+
+        .fog-setting label, .hint-option label {
+            display: flex;
+            align-items: center;
+            color: #b8b8d1;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .fog-setting input[type="checkbox"], .hint-option input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .panel-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .panel-buttons button {
+            background: linear-gradient(135deg, #f72585 0%, #7209b7 100%);
+        }
+
+        .panel-buttons button:hover {
+            background: linear-gradient(135deg, #d90429 0%, #560bad 100%);
+        }
+
+        /* 覆盖层 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 99;
+            display: none;
+        }
+
+        /* 游戏说明内容样式 */
+        .instructions-content {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .icon-example {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .icon-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .key-example {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 5px;
+        }
+
+        .key-example .key {
+            margin-bottom: 5px;
+        }
+
+        /* 游戏说明新增样式 */
+        .controls-section, .icons-section {
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #4361ee;
+        }
+
+        .controls-section h4, .icons-section h4, .game-objective h4 {
+            color: #4cc9f0;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .control-examples {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .key-example {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 60px;
+            padding: 10px;
+        }
+
+        .key-label {
+            font-size: 12px;
+            color: #b8b8d1;
+            margin: 2px 0;
+        }
+
+        .key-example > div:last-child {
+            font-size: 12px;
+            color: #b8b8d1;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .icon-examples {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .icon-example {
+            display: flex;
+            align-items: center;
+        }
+
+        .icon-example > div:last-child {
+            font-size: 14px;
+            color: #b8b8d1;
+        }
+
+        .game-objective {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 8px;
+            border: 1px solid #4361ee;
+            text-align: center;
+        }
+
+        .game-objective p {
+            margin: 0;
+            color: #b8b8d1;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>走迷宫小游戏 <small style="font-size:0.5em;color:#888;">v0.1.8</small></h1>
+        <div class="subtitle">
+            方向键或 WASD 移动。<strong style="color:#4361ee;">蓝墙</strong>不可通行。<br>
+            <strong style="color:#ffd166;">黄门</strong>：堵住主路分叉口，需踩<strong style="color:#ffd166;">黄按钮</strong>打开（按钮在主路上，黄门后）。<br>
+            <strong style="color:#ff9f1c;">单向门</strong>：橙墙走过显方向，只能前进不能后退。<br>
+            第3关起每3关累加新机制，迷宫尺寸周期回调。挑战升级！
+        </div>
+
+        <div class="status" id="status">正在初始化…</div>
+
+        <div class="game-container">
+            <canvas id="mazeCanvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-info">
+                <div class="control-item">
+                    <span class="key">&uarr;</span> 或 <span class="key">W</span> : 向上移动
+                </div>
+                <div class="control-item">
+                    <span class="key">&darr;</span> 或 <span class="key">S</span> : 向下移动
+                </div>
+                <div class="control-item">
+                    <span class="key">&larr;</span> 或 <span class="key">A</span> : 向左移动
+                </div>
+                <div class="control-item">
+                    <span class="key">&rarr;</span> 或 <span class="key">D</span> : 向右移动
+                </div>
+                <div class="control-item">
+                    <span class="key">空格</span> : 切换视野模式
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button id="startBtn">开始新游戏</button>
+                <button id="showInstructionsBtn">显示游戏说明</button>
+                <button id="settingsBtn">游戏设置</button>
+                <button id="hintsBtn">显示提示</button>
+            </div>
+        </div>
+
+        <!-- 游戏设置面板 -->
+        <div class="settings-panel" id="settingsPanel" style="display: none;">
+            <div class="panel-header">
+                <h3>游戏设置</h3>
+            </div>
+            <div class="panel-content">
+                <div class="position-selectors">
+                    <div class="position-selector">
+                        <label for="startPos">起点位置：</label>
+                        <select id="startPos">
+                            <option value="middle">中间</option>
+                            <option value="top" selected>上边</option>
+                            <option value="bottom">下边</option>
+                            <option value="left">左边</option>
+                            <option value="right">右边</option>
+                        </select>
+                    </div>
+                    <div class="position-selector">
+                        <label for="endPos">终点位置：</label>
+                        <select id="endPos">
+                            <option value="middle">中间</option>
+                            <option value="top">上边</option>
+                            <option value="bottom" selected>下边</option>
+                            <option value="left">左边</option>
+                            <option value="right">右边</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="fog-setting">
+                    <label>
+                        <input type="checkbox" id="fogToggle" checked>
+                        启用视野限制（战争迷雾）
+                    </label>
+                </div>
+                <div class="panel-buttons">
+                    <button id="applySettingsBtn">应用设置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示面板 -->
+        <div class="hints-panel" id="hintsPanel" style="display: none;">
+            <div class="panel-header">
+                <h3>游戏提示</h3>
+            </div>
+            <div class="panel-content">
+                <div class="hint-options">
+                    <div class="hint-option">
+                        <label>
+                            <input type="checkbox" id="solutionToggle">
+                            显示解法提示（黄色虚线）
+                        </label>
+                    </div>
+                    <div class="hint-option">
+                        <label>
+                            <input type="checkbox" id="visitedToggle">
+                            显示当前路径（蓝色标记）
+                        </label>
+                    </div>
+                </div>
+                <div class="panel-buttons">
+                    <button id="applyHintsBtn">应用提示</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>游戏说明</h3>
+            <div class="instructions-content">
+                <div class="controls-section">
+                    <h4>键盘控制</h4>
+                    <div class="control-examples">
+                        <div class="key-example">
+                            <div class="key">&uarr;</div>
+                            <div class="key-label">W</div>
+                            <div>向上移动</div>
+                        </div>
+                        <div class="key-example">
+                            <div class="key">&darr;</div>
+                            <div class="key-label">S</div>
+                            <div>向下移动</div>
+                        </div>
+                        <div class="key-example">
+                            <div class="key">&larr;</div>
+                            <div class="key-label">A</div>
+                            <div>向左移动</div>
+                        </div>
+                        <div class="key-example">
+                            <div class="key">&rarr;</div>
+                            <div class="key-label">D</div>
+                            <div>向右移动</div>
+                        </div>
+                        <div class="key-example">
+                            <div class="key" style="min-width: 60px;">空格</div>
+                            <div>切换视野模式</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="icons-section">
+                    <h4>地图图标</h4>
+                    <div class="icon-examples">
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #4ade80;"></div>
+                            <div>起点（绿色）</div>
+                        </div>
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #f72585;"></div>
+                            <div>终点（红色）</div>
+                        </div>
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #4cc9f0;"></div>
+                            <div>玩家角色（蓝色）</div>
+                        </div>
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #4361ee;"></div>
+                            <div>墙壁（深蓝色）</div>
+                        </div>
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #ff9f1c;"></div>
+                            <div>单向门（第6关起累加·预置橙墙·走过显方向）</div>
+                        </div>
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #ffd166;"></div>
+                            <div>黄色按钮（第3关起·踩中打开对应黄门）</div>
+                        </div>
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #ffd166;"></div>
+                            <div>黄色门（第3关起·堵主路·按钮激活）</div>
+                        </div>
+                        <div class="icon-example">
+                            <div class="icon-color" style="background-color: #4cc9f0;"></div>
+                            <div>已访问路径（亮蓝色）</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-objective">
+                <h4>游戏目标</h4>
+                <p>
+                    从<strong style="color:#4ade80;">绿色起点</strong>移动到<strong style="color:#f72585;">红色终点</strong>。<br>
+                    <strong style="color:#ffd166;">黄门</strong>：黄色大门堵住主路分叉口，需先找到<strong style="color:#ffd166;">黄色按钮</strong>（格子中心圆点）踩中才能打开。<br>
+                    <strong style="color:#ff9f1c;">单向门</strong>：橙色墙壁，走过显示方向，只能前进不能后退。<br>
+                    智能分层放置·保证至少一条通路。
+                </p>
+            </div>
+        </div>
+
+        <div class="footer">
+            迷宫生成算法：递归回溯 | v0.1.8 — 机制累加 + 尺寸递减；本关重开 / 新迷宫
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    //  走迷宫小游戏 v0.7.0 — 机制累加 + 尺寸递减
+    // ============================================================
+
+    const VERSION = '0.1.8';
+
+    var DIR_DX = [0, 1, 0, -1];
+    var DIR_DY = [-1, 0, 1, 0];
+
+    function getWallIndex(dx, dy) {
+        if (dx === -1 && dy === 0) return 3;
+        if (dx ===  1 && dy === 0) return 1;
+        if (dx ===  0 && dy === -1) return 0;
+        if (dx ===  0 && dy ===  1) return 2;
+        return -1;
+    }
+
+    /** 与移动方向墙索引对应的「进入目标格时被挡」的索引（与线上一致） */
+    var OPP_ENTRY = [2, 3, 0, 1];
+
+    class MazeGame {
+        constructor() {
+            this.config = {
+                cellSize: 40,
+                wallWidthRatio: 0.2,
+                playerColor: '#4cc9f0',
+                startColor: '#4ade80',
+                endColor: '#f72585',
+                wallColor: '#4361ee',
+                oneWayWallColor: '#ff9f1c',
+                pathColor: '#333333',
+                hintColor: '#ffd166',
+                visitedColor: '#4cc9f0',
+                fogColor: '#1a1a1a',
+                visionRadius: 1.5,
+                useFogOfWar: true,
+                animDuration: 120,
+            };
+
+            this.canvas = null;
+            this.ctx = null;
+            this.offCanvas = null;
+            this.offCtx = null;
+
+            this.maze = [];
+            this.player = { x: 0, y: 0 };
+            this.start = { x: 0, y: 0 };
+            this.end = { x: 0, y: 0 };
+            this.startPosition = 'top';
+            this.endPosition = 'bottom';
+
+            this.gameStarted = false;
+            this.gameWon = false;
+            this.startTime = 0;
+            this.endTime = 0;
+
+            this.visited = [];
+            this.solutionPath = [];
+            this.showSolution = false;
+            this.showVisited = false;
+            this.fogEnabled = true;
+            this.visionMode = 'circular';
+            this.playerDirection = { x: 0, y: 1 };
+
+            this.animating = false;
+            this.animFrom = null;
+            this.animTo = null;
+            this.animStart = 0;
+            this.animProgress = 1;
+
+            this.baseCellSize = 40;
+            this.currentCellSize = 40;
+
+            this.currentLevel = 1;
+            this.oneWayWalls = [];
+            this._cycleChord = null;
+            this._cyclePathCellPairs = [];
+
+            /** 潜在单向门边 canonical key → true */
+            this.latentEdgeSet = {};
+            this._latentEdgeTemplateKeys = [];
+            this._lockedEdgeKeys = {};
+            this._pendingOneWayWalls = [];       // 待激活的橙墙列表（画在通道上）
+            this._pendingOneWayWallsTemplate = []; // 模板副本（用于本关重开）
+            this.doorArrows = [];
+        }
+
+        /** 第 3 关起启用黄色按钮门机制 */
+        yellowMechanismUnlocked() {
+            return this.currentLevel >= 3;
+        }
+
+        /** 第 6 关起启用单向门机制（与黄门累加） */
+        oneWayMechanismUnlocked() {
+            return this.currentLevel >= 6;
+        }
+
+        /** 关卡 → 迷宫边长（每 3 关一个周期；每周期递增后递减；最长 20 格） */
+        getLevelMazeSize() {
+            // 例：1→8, 2→9, 3→10, 4→9, 5→10, 6→11, 7→10, 8→11, 9→12, 10→11, 11→12, 12→13, 13→12 ...
+            // 公式：7 + ceil((level+2)/2) - (level%2===0?1:0)
+            var size = 7 + Math.ceil((this.currentLevel + 2) / 2);
+            if (this.currentLevel % 2 === 0) size -= 1;
+            return Math.min(20, size);
+        }
+
+        _bfsReachable(sx, sy, tx, ty, size) {
+            if (sx === tx && sy === ty) return true;
+            var seen = [];
+            for (var i = 0; i < size; i++) {
+                seen[i] = [];
+                for (var j = 0; j < size; j++) seen[i][j] = false;
+            }
+            var q = [{ x: sx, y: sy }];
+            seen[sy][sx] = true;
+            while (q.length > 0) {
+                var c = q.shift();
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[c.y][c.x][d]) continue;
+                    var nx = c.x + DIR_DX[d];
+                    var ny = c.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (seen[ny][nx]) continue;
+                    seen[ny][nx] = true;
+                    if (nx === tx && ny === ty) return true;
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return false;
+        }
+
+        _bfsPathCellList(sx, sy, tx, ty, size) {
+            if (sx === tx && sy === ty) return [{ x: sx, y: sy }];
+            var seen = [];
+            for (var i = 0; i < size; i++) {
+                seen[i] = [];
+                for (var j = 0; j < size; j++) seen[i][j] = false;
+            }
+            var parent = {};
+            var q = [{ x: sx, y: sy }];
+            seen[sy][sx] = true;
+            parent[sx + ',' + sy] = null;
+            while (q.length > 0) {
+                var c = q.shift();
+                if (c.x === tx && c.y === ty) {
+                    var path = [];
+                    var cur = { x: tx, y: ty };
+                    while (cur) {
+                        path.push({ x: cur.x, y: cur.y });
+                        var pk = parent[cur.x + ',' + cur.y];
+                        cur = pk;
+                    }
+                    path.reverse();
+                    return path;
+                }
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[c.y][c.x][d]) continue;
+                    var nx = c.x + DIR_DX[d];
+                    var ny = c.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (seen[ny][nx]) continue;
+                    seen[ny][nx] = true;
+                    parent[nx + ',' + ny] = { x: c.x, y: c.y };
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return null;
+        }
+
+        /** 在仍为树的迷宫中，若两格相邻且墙封闭但已绕路连通，则打通一条墙形成唯一环；供回程边/单向放置 */
+        _maybeAddRandomCycle() {
+            this._cycleChord = null;
+            this._cyclePathCellPairs = [];
+            var size = this.getLevelMazeSize();
+            var candidates = [];
+            for (var y = 0; y < size; y++) {
+                for (var x = 0; x < size; x++) {
+                    for (var d = 0; d < 4; d++) {
+                        if (!this.maze[y][x][d]) continue;
+                        var nx = x + DIR_DX[d];
+                        var ny = y + DIR_DY[d];
+                        if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                        if (this._bfsReachable(x, y, nx, ny, size)) {
+                            candidates.push({ x: x, y: y, d: d, nx: nx, ny: ny });
+                        }
+                    }
+                }
+            }
+            if (candidates.length === 0) return;
+            var pick = candidates[Math.floor(Math.random() * candidates.length)];
+            var path = this._bfsPathCellList(pick.x, pick.y, pick.nx, pick.ny, size);
+            if (!path || path.length < 2) return;
+            for (var i = 0; i < path.length - 1; i++) {
+                var a = path[i];
+                var b = path[i + 1];
+                this._cyclePathCellPairs.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+            }
+            var opp = OPP_ENTRY[pick.d];
+            this.maze[pick.y][pick.x][pick.d] = false;
+            this.maze[pick.ny][pick.nx][opp] = false;
+            this._cycleChord = { x: pick.x, y: pick.y, d: pick.d, nx: pick.nx, ny: pick.ny };
+        }
+
+        _edgeOnCycleOrChord(x, y, d) {
+            var nx = x + DIR_DX[d];
+            var ny = y + DIR_DY[d];
+            if (nx < 0 || nx >= this.getLevelMazeSize() || ny < 0 || ny >= this.getLevelMazeSize()) return false;
+            for (var i = 0; i < this._cyclePathCellPairs.length; i++) {
+                var p = this._cyclePathCellPairs[i];
+                if (p.x1 === x && p.y1 === y && p.x2 === nx && p.y2 === ny) return true;
+                if (p.x1 === nx && p.y1 === ny && p.x2 === x && p.y2 === y) return true;
+            }
+            var c = this._cycleChord;
+            if (!c) return false;
+            if (x === c.x && y === c.y && d === c.d) return true;
+            if (x === c.nx && y === c.ny && d === OPP_ENTRY[c.d]) return true;
+            return false;
+        }
+
+        _canonicalEdgeKey(x, y, d) {
+            var nx = x + DIR_DX[d];
+            var ny = y + DIR_DY[d];
+            var size = this.getLevelMazeSize();
+            if (nx < 0 || nx >= size || ny < 0 || ny >= size) return null;
+            if (x < nx || (x === nx && y < ny)) return x + ',' + y + ',' + d;
+            return nx + ',' + ny + ',' + OPP_ENTRY[d];
+        }
+
+        /** 从 (fx,fy) 沿 (dx,dy) 走一步是否允许（物理墙 + 单向规则） */
+        _canPassFromTo(fx, fy, dx, dy) {
+            var wi = getWallIndex(dx, dy);
+            if (wi === -1) return false;
+            var size = this.getLevelMazeSize();
+            var nx = fx + dx, ny = fy + dy;
+            if (nx < 0 || nx >= size || ny < 0 || ny >= size) return false;
+            if (this.maze[fy][fx][wi]) return false;
+            var opp = OPP_ENTRY[wi];
+            if (this.oneWayWalls[ny][nx][opp]) return false;
+            // 检查黄色门（关闭的黄门会阻挡）
+            if (this.yellowDoors[ny][nx][opp]) return false;
+            return true;
+        }
+
+        // ======================== 初始化 ========================
+
+        init() {
+            try {
+                this.canvas = document.getElementById('mazeCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.offCanvas = document.createElement('canvas');
+                this.offCtx = this.offCanvas.getContext('2d');
+
+                // 先用固定尺寸初始化，确保 canvas 可用
+                this._applyCanvasSize(this.baseCellSize);
+
+                window.addEventListener('resize', () => this._onResize());
+
+                this.startPosition = document.getElementById('startPos').value;
+                this.endPosition = document.getElementById('endPos').value;
+
+                this.generateMaze();
+                this.setupEventListeners();
+                this.draw();
+                this.updateStatus();
+            } catch (err) {
+                console.error('[MazeGame] 初始化失败:', err);
+                var statusEl = document.getElementById('status');
+                if (statusEl) {
+                    statusEl.style.color = 'red';
+                    statusEl.textContent = '游戏初始化失败，请按 F12 打开控制台查看错误详情';
+                }
+            }
+        }
+
+        /** 安全地设置 canvas 和 offCanvas 的尺寸 */
+        _applyCanvasSize(cellSize) {
+            cellSize = Math.max(10, cellSize); // 最小 10px，防止异常值
+            this.currentCellSize = cellSize;
+            var cs = cellSize;
+            var ww = cs * this.config.wallWidthRatio;
+            var total = this.getLevelMazeSize() * cs + ww;
+
+            this.canvas.width = total;
+            this.canvas.height = total;
+            this.offCanvas.width = total;
+            this.offCanvas.height = total;
+
+            var container = document.querySelector('.game-container');
+            if (container) container.style.width = total + 'px';
+        }
+
+        _onResize() {
+            this._resizeCanvas();
+            this._cacheStaticContent();
+            this.draw();
+        }
+
+        /** 响应式调整格子大小 */
+        _resizeCanvas() {
+            var container = document.querySelector('.game-container');
+            var maxWidth = 800;
+            if (container && container.clientWidth > 0) {
+                maxWidth = Math.min(container.clientWidth, 800);
+            } else {
+                maxWidth = 600; // fallback
+            }
+            var ww = this.baseCellSize * this.config.wallWidthRatio;
+            var rawSize = this.getLevelMazeSize() * this.baseCellSize + ww;
+
+            var newCellSize = this.baseCellSize;
+            if (rawSize > maxWidth) {
+                newCellSize = Math.max(10, (maxWidth - ww) / this.getLevelMazeSize());
+            }
+            this._applyCanvasSize(newCellSize);
+        }
+
+        get cellSize() { return this.currentCellSize; }
+        get wallWidth() { return this.currentCellSize * this.config.wallWidthRatio; }
+
+        cellToPixel(x, y) {
+            var ww = this.wallWidth;
+            var cs = this.cellSize;
+            return {
+                x: x * cs + ww / 2 + cs / 2,
+                y: y * cs + ww / 2 + cs / 2,
+            };
+        }
+
+        // ==================== 迷宫生成 ====================
+
+        generateMaze() {
+            var size = this.getLevelMazeSize();
+
+            // 用显式循环初始化迷宫，避免 Array.from 兼容性问题
+            this.maze = [];
+            for (var ry = 0; ry < size; ry++) {
+                this.maze[ry] = [];
+                for (var rx = 0; rx < size; rx++) {
+                    this.maze[ry][rx] = [true, true, true, true];
+                }
+            }
+
+            this._initPositions();
+
+            // 防御性检查：确保 start 坐标有效
+            if (typeof this.start.x !== 'number' || typeof this.start.y !== 'number') {
+                console.error('[MazeGame] start 坐标无效:', JSON.stringify(this.start));
+                this.start = { x: 0, y: 0 };
+            }
+
+            this._runBacktrack(this.start);
+            this._ensurePathLength(size);
+            this.resetGameState();
+            this.calculateSolution();
+            this.addDeadEndBranches();
+            this._cycleChord = null;
+            this._cyclePathCellPairs = [];
+            if (this.oneWayMechanismUnlocked()) {
+                this._maybeAddRandomCycle();
+            }
+            this.markLatentOneWayCandidates();
+            this._latentEdgeTemplateKeys = Object.keys(this.latentEdgeSet);
+            this._pendingOneWayWallsTemplate = this._pendingOneWayWalls ? this._pendingOneWayWalls.slice() : [];
+            this._lockedEdgeKeys = {};
+            this.doorArrows = [];
+            this.calculateSolution();
+            // 黄色门系统：第3关起生成
+            if (this.yellowMechanismUnlocked()) {
+                this._addYellowMechanism();
+            }
+            // 单向门系统：第6关起生成（与黄门累加）
+            if (this.oneWayMechanismUnlocked()) {
+                this.markLatentOneWayCandidates();
+            }
+            // 保存模板
+            this._latentEdgeTemplateKeys = Object.keys(this.latentEdgeSet);
+            this._pendingOneWayWallsTemplate = this._pendingOneWayWalls ? this._pendingOneWayWalls.slice() : [];
+            // 保存黄色门模板
+            this._yellowDoorsTemplate = [];
+            this._yellowButtonsTemplate = [];
+            var sz2 = this.getLevelMazeSize();
+            for (var y = 0; y < sz2; y++) {
+                this._yellowDoorsTemplate[y] = [];
+                this._yellowButtonsTemplate[y] = [];
+                for (var x = 0; x < sz2; x++) {
+                    this._yellowDoorsTemplate[y][x] = this.yellowDoors[y][x].slice();
+                    this._yellowButtonsTemplate[y][x] = this.yellowButtons[y][x];  // 浅拷贝即可
+                }
+            }
+            this._resizeCanvas();
+            this._cacheStaticContent();
+        }
+
+        /** 递归回溯核心算法 */
+        _runBacktrack(startCell) {
+            var self = this;
+            var size = self.getLevelMazeSize();
+
+            // 用显式循环初始化 visited 数组
+            var visited = [];
+            for (var vi = 0; vi < size; vi++) {
+                visited[vi] = [];
+                for (var vj = 0; vj < size; vj++) {
+                    visited[vi][vj] = false;
+                }
+            }
+
+            // 安全地设置起点为已访问
+            var sx = startCell.x | 0; // |0 确保是整数
+            var sy = startCell.y | 0;
+            sx = Math.max(0, Math.min(sx, size - 1));
+            sy = Math.max(0, Math.min(sy, size - 1));
+            visited[sy][sx] = true;
+
+            var stack = [{ x: sx, y: sy }];
+
+            // 四方向：上右下左
+            var DIRS = [
+                { dx: 0, dy: -1, dir: 0, opp: 2 },
+                { dx: 1,  dy: 0,  dir: 1, opp: 3 },
+                { dx: 0,  dy: 1,  dir: 2, opp: 0 },
+                { dx: -1, dy: 0,  dir: 3, opp: 1 },
+            ];
+
+            while (stack.length > 0) {
+                var cur = stack[stack.length - 1];
+                var x = cur.x | 0, y = cur.y | 0;
+
+                // 收集可用邻居（手动循环代替 filter）
+                var neighbors = [];
+                for (var di = 0; di < DIRS.length; di++) {
+                    var d = DIRS[di];
+                    var nx = x + d.dx;
+                    var ny = y + d.dy;
+                    if (nx >= 0 && nx < size && ny >= 0 && ny < size && !visited[ny][nx]) {
+                        neighbors.push(d);
+                    }
+                }
+
+                if (neighbors.length > 0) {
+                    var ni = Math.floor(Math.random() * neighbors.length);
+                    var nxt = neighbors[ni];
+                    var nx = x + nxt.dx;
+                    var ny = y + nxt.dy;
+
+                    // 打通双向墙（邻居对象只有 dx/dy/dir/opp，必须用 nx/ny）
+                    self.maze[y][x][nxt.dir] = false;
+                    self.maze[ny][nx][nxt.opp] = false;
+
+                    visited[ny][nx] = true;
+                    stack.push({ x: nx, y: ny });
+                } else {
+                    stack.pop();
+                }
+            }
+        }
+
+        /** 确保解法路径足够长 */
+        _ensurePathLength(size) {
+            var minPathLen = size;
+            var attempts = 0;
+            var MAX = 50;
+            var self = this;
+
+            while (attempts < MAX) {
+                self.resetGameState();
+                self.calculateSolution();
+                if (self.solutionPath.length >= minPathLen) break;
+
+                // 用显式循环重置迷宫
+                for (var y = 0; y < size; y++) {
+                    for (var x = 0; x < size; x++) {
+                        self.maze[y][x] = [true, true, true, true];
+                    }
+                }
+
+                self._runBacktrack(self.start);
+                attempts++;
+            }
+
+            if (self.solutionPath.length < minPathLen) {
+                console.warn('警告：无法生成长度≥' + minPathLen + '的解法。当前长度: ' + self.solutionPath.length);
+            } else {
+                console.log('迷宫生成成功，解法长度=' + self.solutionPath.length);
+            }
+        }
+
+        // ======== 起点/终点位置 ========
+
+        _initPositions() {
+            var size = this.getLevelMazeSize();
+            var mid = Math.floor(size / 2);
+
+            this.start = this._posCoord(this.startPosition, size);
+            this.end = this._posCoord(this.endPosition, size);
+
+            // 确保终点不是起点，如果相同则调整终点位置
+            if (this.end.x === this.start.x && this.end.y === this.start.y) {
+                // 根据终点位置类型进行不同调整
+                if (this.endPosition === 'middle') {
+                    this.end.x = (this.end.x + 1) % size;
+                } else if (this.endPosition === 'top') {
+                    this.end.y = Math.min(this.end.y + 1, size - 1);
+                } else if (this.endPosition === 'bottom') {
+                    this.end.y = Math.max(this.end.y - 1, 0);
+                } else if (this.endPosition === 'left') {
+                    this.end.x = Math.min(this.end.x + 1, size - 1);
+                } else if (this.endPosition === 'right') {
+                    this.end.x = Math.max(this.end.x - 1, 0);
+                } else {
+                    this.end.x = (this.end.x + 1) % size;
+                }
+            }
+
+            var minDist = Math.floor(size / 2);
+            var attempts = 0;
+            while (Math.abs(this.end.x - this.start.x) + Math.abs(this.end.y - this.start.y) < minDist && attempts < 20) {
+                this.end = this._maximizeDistance(this.endPosition, size, this.start);
+                attempts++;
+            }
+
+            this.player = { x: this.start.x, y: this.start.y };
+        }
+
+        _posCoord(pos, size) {
+            var mid = Math.floor(size / 2);
+            switch (pos) {
+                case 'middle': return { x: mid, y: mid };
+                case 'top':    return { x: Math.floor(Math.random() * (size - 2)) + 1, y: 0 };
+                case 'bottom': return { x: Math.floor(Math.random() * (size - 2)) + 1, y: size - 1 };
+                case 'left':   return { x: 0, y: Math.floor(Math.random() * (size - 2)) + 1 };
+                case 'right':  return { x: size - 1, y: Math.floor(Math.random() * (size - 2)) + 1 };
+                default:       return { x: mid, y: mid };
+            }
+        }
+
+        /** 统一的距离最大化函数 */
+        _maximizeDistance(position, size, refPoint) {
+            var candidates = [];
+
+            if (position === 'middle') {
+                var r = Math.floor(size / 3);
+                var lo = Math.floor(size / 2) - r;
+                var hi = Math.floor(size / 2) + r;
+                for (var y = lo; y <= hi; y++)
+                    for (var x = lo; x <= hi; x++) candidates.push({ x: x, y: y });
+            } else if (position === 'top') {
+                for (var x = 0; x < size; x++) candidates.push({ x: x, y: 0 });
+            } else if (position === 'bottom') {
+                for (var x = 0; x < size; x++) candidates.push({ x: x, y: size - 1 });
+            } else if (position === 'left') {
+                for (var y = 0; y < size; y++) candidates.push({ x: 0, y: y });
+            } else if (position === 'right') {
+                for (var y = 0; y < size; y++) candidates.push({ x: size - 1, y: y });
+            } else {
+                var m = Math.floor(size / 2);
+                candidates.push({ x: m, y: m });
+            }
+
+            var best = { x: refPoint.x, y: refPoint.y }, bestDist = 0;
+            for (var i = 0; i < candidates.length; i++) {
+                var p = candidates[i];
+                var d = Math.abs(p.x - refPoint.x) + Math.abs(p.y - refPoint.y);
+                if (d > bestDist) { bestDist = d; best = p; }
+            }
+            return best;
+        }
+
+        // ========== 死胡同分支 ==========
+
+        addDeadEndBranches() {
+            var size = this.getLevelMazeSize();
+            if (this.solutionPath.length < 3) return;
+
+            var numBranches = Math.min(4, Math.max(2, Math.floor(this.solutionPath.length / 5)));
+            var len = this.solutionPath.length;
+            var minIdx = len >= 8 ? Math.floor(len * 0.25) : 1;
+            var maxIdx = len >= 8 ? Math.floor(len * 0.75) : len - 2;
+            var lo = Math.min(minIdx, maxIdx);
+            var hi = Math.max(minIdx, maxIdx);
+
+            var branchPoints = [];
+            for (var i = 0; i < numBranches; i++) {
+                var idx = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+                branchPoints.push(this.solutionPath[idx]);
+            }
+
+            // 去重
+            var seen = {};
+            var unique = [];
+            for (var j = 0; j < branchPoints.length; j++) {
+                var pt = branchPoints[j];
+                var k = pt.x + ',' + pt.y;
+                if (!seen[k]) { seen[k] = true; unique.push(pt); }
+            }
+
+            var shorts = 0;
+            for (var k = 0; k < unique.length; k++) {
+                var blen = shorts++ < 2 ? Math.floor(Math.random() * 6) + 1 : Math.floor(Math.random() * 9) + 7;
+                this.createDeadEndBranch(unique[k].x, unique[k].y, blen);
+            }
+        }
+
+        createDeadEndBranch(sx, sy, maxLen) {
+            var size = this.getLevelMazeSize();
+            var cx = sx, cy = sy, length = 0;
+            var visitedCells = {};
+            visitedCells[cx + ',' + cy] = true;
+
+            var solutionSet = {};
+            for (var i = 0; i < this.solutionPath.length; i++) {
+                solutionSet[this.solutionPath[i].x + ',' + this.solutionPath[i].y] = true;
+            }
+
+            var DIRS = [
+                { dx: 0, dy: -1, wi: 0, ow: 2 },
+                { dx: 1,  dy: 0,  wi: 1, ow: 3 },
+                { dx: 0,  dy: 1,  wi: 2, ow: 0 },
+                { dx: -1, dy: 0,  wi: 3, ow: 1 },
+            ];
+
+            while (length < maxLen) {
+                var possibleDirs = [];
+                for (var dIdx = 0; dIdx < DIRS.length; dIdx++) {
+                    var d = DIRS[dIdx];
+                    var nx = cx + d.dx, ny = cy + d.dy;
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (visitedCells[nx + ',' + ny]) continue;
+                    if (solutionSet[nx + ',' + ny] && !(nx === sx && ny === sy)) continue;
+                    if (!this.maze[cy][cx][d.wi]) continue;
+
+                    var w = this.maze[ny][nx];
+                    var isIsolated = true;
+                    for (var wIdx = 0; wIdx < 4; wIdx++) {
+                        if (!w[wIdx]) { isIsolated = false; break; }
+                    }
+                    if (!isIsolated) continue;
+
+                    possibleDirs.push({ dx: d.dx, dy: d.dy, wi: d.wi, ow: d.ow, nx: nx, ny: ny });
+                }
+
+                if (possibleDirs.length === 0) break;
+
+                var chosen = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+                this.maze[cy][cx][chosen.wi] = false;
+                this.maze[chosen.ny][chosen.nx][chosen.ow] = false;
+                cx = chosen.nx; cy = chosen.ny;
+                visitedCells[cx + ',' + cy] = true;
+                length++;
+
+                if (length >= 3 && Math.random() < 0.3) break;
+            }
+        }
+
+        // ==================== BFS 解法 ====================
+
+        calculateSolution() {
+            var size = this.getLevelMazeSize();
+            var queue = [{ x: this.start.x, y: this.start.y, path: [{ x: this.start.x, y: this.start.y }] }];
+
+            // 显式循环初始化 seen 数组
+            var seen = [];
+            for (var si = 0; si < size; si++) {
+                seen[si] = [];
+                for (var sj = 0; sj < size; sj++) {
+                    seen[si][sj] = false;
+                }
+            }
+            seen[this.start.y][this.start.x] = true;
+            this.solutionPath = [];
+
+            while (queue.length > 0) {
+                var cur = queue.shift();
+                if (cur.x === this.end.x && cur.y === this.end.y) {
+                    this.solutionPath = cur.path;
+                    return;
+                }
+
+                // 上
+                if (this._canPassFromTo(cur.x, cur.y, 0, -1) && !seen[cur.y - 1][cur.x]) {
+                    seen[cur.y - 1][cur.x] = true;
+                    var newPath1 = cur.path.slice();
+                    newPath1.push({ x: cur.x, y: cur.y - 1 });
+                    queue.push({ x: cur.x, y: cur.y - 1, path: newPath1 });
+                }
+                // 右
+                if (this._canPassFromTo(cur.x, cur.y, 1, 0) && !seen[cur.y][cur.x + 1]) {
+                    seen[cur.y][cur.x + 1] = true;
+                    var newPath2 = cur.path.slice();
+                    newPath2.push({ x: cur.x + 1, y: cur.y });
+                    queue.push({ x: cur.x + 1, y: cur.y, path: newPath2 });
+                }
+                // 下
+                if (this._canPassFromTo(cur.x, cur.y, 0, 1) && !seen[cur.y + 1][cur.x]) {
+                    seen[cur.y + 1][cur.x] = true;
+                    var newPath3 = cur.path.slice();
+                    newPath3.push({ x: cur.x, y: cur.y + 1 });
+                    queue.push({ x: cur.x, y: cur.y + 1, path: newPath3 });
+                }
+                // 左
+                if (this._canPassFromTo(cur.x, cur.y, -1, 0) && !seen[cur.y][cur.x - 1]) {
+                    seen[cur.y][cur.x - 1] = true;
+                    var newPath4 = cur.path.slice();
+                    newPath4.push({ x: cur.x - 1, y: cur.y });
+                    queue.push({ x: cur.x - 1, y: cur.y, path: newPath4 });
+                }
+            }
+        }
+
+        // ==================== 状态管理 ====================
+
+        resetGameState() {
+            this.player = { x: this.start.x, y: this.start.y };
+            this.gameStarted = false;
+            this.gameWon = false;
+            this.startTime = 0;
+            this.endTime = 0;
+            this.showSolution = false;
+            this.showVisited = false;
+            this.fogEnabled = true;
+            this.visionMode = 'circular';
+            this.playerDirection = { x: 0, y: 1 };
+            this.animating = false;
+            this.animProgress = 1;
+
+            var sz = this.getLevelMazeSize();
+            // 显式循环初始化 visited
+            this.visited = [];
+            for (var vy = 0; vy < sz; vy++) {
+                this.visited[vy] = [];
+                for (var vx = 0; vx < sz; vx++) {
+                    this.visited[vy][vx] = false;
+                }
+            }
+            if (this.start.y >= 0 && this.start.y < sz && this.start.x >= 0 && this.start.x < sz) {
+                this.visited[this.start.y][this.start.x] = true;
+            }
+
+            this.oneWayWalls = [];
+            for (var oy = 0; oy < sz; oy++) {
+                this.oneWayWalls[oy] = [];
+                for (var ox = 0; ox < sz; ox++) {
+                    this.oneWayWalls[oy][ox] = [false, false, false, false];
+                }
+            }
+            // 黄色门系统（v0.6.0 新增）
+            this.yellowDoors = [];       // [y][x][d] = true (关闭的门)
+            this.yellowButtons = [];     // [y][x] = {targetX, targetY, dir, active}
+            this.activeYellowDoors = []; // 已打开的门列表 [{x,y,dir,ox,oy,odir}]
+            for (var yy = 0; yy < sz; yy++) {
+                this.yellowDoors[yy] = [];
+                this.yellowButtons[yy] = [];
+                for (var xx = 0; xx < sz; xx++) {
+                    this.yellowDoors[yy][xx] = [false, false, false, false];
+                    this.yellowButtons[yy][xx] = null;
+                }
+            }
+            // 恢复待激活的橙墙（显示用）
+            if (this._pendingOneWayWallsTemplate && this.oneWayMechanismUnlocked()) {
+                this._pendingOneWayWalls = this._pendingOneWayWallsTemplate.slice();
+            } else {
+                this._pendingOneWayWalls = [];
+            }
+            this._lockedEdgeKeys = {};
+            this.doorArrows = [];
+
+            // 恢复黄色门模板（本关重开保持相同布局）
+            if (this._yellowDoorsTemplate && this.yellowMechanismUnlocked()) {
+                var sz3 = this.getLevelMazeSize();
+                for (var ry = 0; ry < sz3; ry++) {
+                    for (var rx = 0; rx < sz3; rx++) {
+                        this.yellowDoors[ry][rx] = this._yellowDoorsTemplate[ry][rx].slice();
+                        // 按钮需要重置active状态
+                        if (this._yellowButtonsTemplate[ry][rx]) {
+                            this.yellowButtons[ry][rx] = {
+                                targetX: this._yellowButtonsTemplate[ry][rx].targetX,
+                                targetY: this._yellowButtonsTemplate[ry][rx].targetY,
+                                dir: this._yellowButtonsTemplate[ry][rx].dir,
+                                active: false  // 重置为未激活
+                            };
+                        } else {
+                            this.yellowButtons[ry][rx] = null;
+                        }
+                    }
+                }
+            }
+            this.activeYellowDoors = [];  // 已打开的门列表每关清空
+        }
+
+        // ========== 智能分层单向门放置算法 ==========
+
+        /**
+         * 黄色门机关系统 (v0.7.0 重构)
+         * 规则：
+         *  - 黄门一定在分叉口（主路分支处）
+         *  - 边长<12：最多2个黄门，在最后一个分叉口
+         *  - 边长12-16：最多2个黄门，在倒数第一/第二个分叉口
+         *  - 边长>16：最多3个黄门，在倒数第一/二/三分叉口
+         *  - 按钮一定不在主路，且从起点可达（不经过该黄门）
+         */
+        _addYellowMechanism() {
+            var size = this.getLevelMazeSize();
+            var solPath = this.solutionPath;
+            if (!solPath || solPath.length < 3) return;
+
+            // 1. 识别主路上的分叉口
+            var junctions = this._findJunctionsOnSolution(solPath);
+            if (junctions.length === 0) return;
+
+            // 2. 按尺寸规则确定黄门数量和位置
+            var maxDoors;
+            var doorPositions;
+            
+            if (size < 12) {
+                // 只在最后一个分叉口
+                maxDoors = Math.min(2, junctions.length);
+                doorPositions = [junctions[junctions.length - 1]];
+            } else if (size < 16) {
+                // 倒数第一/第二个分叉口
+                maxDoors = Math.min(2, junctions.length);
+                doorPositions = junctions.slice(-2);
+            } else {
+                // 倒数第一/二/三分叉口
+                maxDoors = Math.min(3, junctions.length);
+                doorPositions = junctions.slice(-3);
+            }
+            doorPositions = doorPositions.slice(0, maxDoors);
+            if (doorPositions.length === 0) return;
+
+            // 3. 一次BFS预计算：从起点可达的非主路格子集合
+            var reachableFromStart = this._computeReachableFromStart();
+
+            // 4. 为每个黄门配对按钮
+            for (var i = 0; i < doorPositions.length; i++) {
+                var doorCell = doorPositions[i];
+                
+                // 找该格子所有可通行的方向（作为门的方向）
+                var doorDirs = [];
+                for (var dir = 0; dir < 4; dir++) {
+                    if (this.maze[doorCell.y][doorCell.x][dir]) continue;  // 物理墙不能放
+                    doorDirs.push(dir);
+                }
+                if (doorDirs.length === 0) continue;
+
+                // 随机选一个方向作为黄门
+                var chosenDir = doorDirs[Math.floor(Math.random() * doorDirs.length)];
+                var ox = doorCell.x + DIR_DX[chosenDir];
+                var oy = doorCell.y + DIR_DY[chosenDir];
+
+                // 寻找按钮位置：必须满足4个约束
+                var buttonPos = this._findButtonInReachableArea(reachableFromStart, doorCell, chosenDir, ox, oy);
+                if (!buttonPos) continue;
+
+                // 放置黄门和按钮
+                this.yellowDoors[oy][ox][OPP_ENTRY[chosenDir]] = true;
+                this.yellowButtons[buttonPos.y][buttonPos.x] = {
+                    targetX: ox, targetY: oy, dir: OPP_ENTRY[chosenDir], active: false
+                };
+            }
+        }
+
+        /**
+         * 识别主路上的分叉口
+         * 分叉口定义：主路上有至少一条分支（死胡同或环的入口）
+         */
+        _findJunctionsOnSolution(solPath) {
+            var size = this.getLevelMazeSize();
+            var solSet = {};
+            for (var i = 0; i < solPath.length; i++) {
+                solSet[solPath[i].x + ',' + solPath[i].y] = i;  // 存索引
+            }
+
+            var junctions = [];
+            // 跳过起点和终点附近的主路
+            for (var i = 2; i < solPath.length - 2; i++) {
+                var p = solPath[i];
+                var branchCount = 0;  // 分支数量
+
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[p.y][p.x][d]) continue;  // 物理墙
+                    var nx = p.x + DIR_DX[d], ny = p.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    
+                    var key = nx + ',' + ny;
+                    // 统计非主路的分支
+                    if (!solSet[key] || solSet[key] < i - 1 || solSet[key] > i + 1) {
+                        branchCount++;
+                    }
+                }
+                
+                // 如果有分支，则是分叉口
+                if (branchCount > 0) {
+                    junctions.push(p);
+                }
+            }
+            return junctions;
+        }
+
+        /**
+         * 一次BFS预计算：从起点可达的非主路格子集合
+         */
+        _computeReachableFromStart() {
+            var size = this.getLevelMazeSize();
+            var solSet = {};
+            for (var i = 0; i < this.solutionPath.length; i++) {
+                solSet[this.solutionPath[i].x + ',' + this.solutionPath[i].y] = true;
+            }
+
+            var reachable = {};
+            var visited = [];
+            for (var y = 0; y < size; y++) {
+                visited[y] = [];
+                for (var x = 0; x < size; x++) visited[y][x] = false;
+            }
+
+            var q = [{ x: this.start.x, y: this.start.y }];
+            visited[this.start.y][this.start.x] = true;
+
+            while (q.length > 0) {
+                var c = q.shift();
+                // 记录非主路的可达格子
+                if (!solSet[c.x + ',' + c.y]) {
+                    reachable[c.x + ',' + c.y] = true;
+                }
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[c.y][c.x][d]) continue;
+                    var nx = c.x + DIR_DX[d], ny = c.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (visited[ny][nx]) continue;
+                    visited[ny][nx] = true;
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return reachable;
+        }
+
+        /**
+         * 从预计算的可达集合中寻找按钮位置
+         * 4个约束：
+         *   1. 按钮不在主路上
+         *   2. 出生点能走到按钮
+         *   3. 出生点不能直接走到终点（黄门必须挡住唯一通路）
+         *   4. 黄门消失后，从按钮可以走到终点
+         */
+        _findButtonInReachableArea(reachableSet, doorCell, chosenDir, ox, oy) {
+            var size = this.getLevelMazeSize();
+            var solSet = {};
+            for (var i = 0; i < this.solutionPath.length; i++) {
+                solSet[this.solutionPath[i].x + ',' + this.solutionPath[i].y] = true;
+            }
+            // 黄门格 = ox, oy（门放在这里）
+            var doorX = ox, doorY = oy;
+
+            // 收集所有候选格子（可达的非主路格子）
+            var candidates = [];
+            for (var key in reachableSet) {
+                var parts = key.split(',');
+                var x = parseInt(parts[0]), y = parseInt(parts[1]);
+                candidates.push({ x: x, y: y });
+            }
+
+            if (candidates.length === 0) return null;
+            this._shuffle(candidates);
+
+            // 检查每个候选：必须满足全部4个约束
+            for (var i = 0; i < candidates.length; i++) {
+                var btn = candidates[i];
+
+                // 约束3：出生点不能直接走到终点（黄门关闭时终点不可达）
+                if (this._bfsReachable(this.start.x, this.start.y, this.end.x, this.end.y, size)) {
+                    // 起点居然能走到终点，说明黄门没有挡在主路上，这个门位置不合格
+                    continue;
+                }
+
+                // 约束2：出生点能走到按钮
+                if (!this._bfsReachable(this.start.x, this.start.y, btn.x, btn.y, size)) {
+                    continue;
+                }
+
+                // 约束1已满足（候选来自 reachableSet，不在主路上）
+
+                // 约束4：黄门消失后，从按钮可以走到终点
+                if (!this._buttonCanReachEndAfterDoorOpen(btn.x, btn.y, doorX, doorY, size)) {
+                    continue;
+                }
+
+                return btn;
+            }
+            return null;
+        }
+
+        /**
+         * 黄门消失后，从按钮可以走到终点
+         * BFS：忽略黄门（因为门已打开），检查 btn → 终点 是否可达
+         */
+        _buttonCanReachEndAfterDoorOpen(btnX, btnY, doorX, doorY, size) {
+            var seen = [];
+            for (var y = 0; y < size; y++) {
+                seen[y] = [];
+                for (var x = 0; x < size; x++) seen[y][x] = false;
+            }
+            var q = [{ x: btnX, y: btnY }];
+            seen[btnY][btnX] = true;
+
+            while (q.length > 0) {
+                var c = q.shift();
+                if (c.x === this.end.x && c.y === this.end.y) return true;
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[c.y][c.x][d]) continue;
+                    var nx = c.x + DIR_DX[d], ny = c.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (seen[ny][nx]) continue;
+                    // 黄门已消失，不再检查 yellowDoors
+                    seen[ny][nx] = true;
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return false;
+        }
+
+        /**
+         * 构建死胡同分支路径集合
+         * @param {Object} solSet 主路格子集合 {"x,y": true}
+         */
+        _buildBranchPathSet(solSet) {
+            var branchSet = {};
+            var size = this.getLevelMazeSize();
+            // 检查所有格子，如果在死胡同末端（只有1个相邻通道且不在主路）
+            for (var y = 0; y < size; y++) {
+                for (var x = 0; x < size; x++) {
+                    // 跳过主路格子
+                    if (solSet[x + ',' + y]) continue;
+                    // 统计相邻空墙数（可通行方向数）
+                    var openCount = 0;
+                    for (var d = 0; d < 4; d++) {
+                        if (!this.maze[y][x][d]) openCount++;
+                    }
+                    // 死胡同末端：openCount=1
+                    if (openCount === 1) {
+                        // 沿死胡同回溯，标记整条分支
+                        var cx = x, cy = y;
+                        var visited = {};
+                        while (true) {
+                            var key = cx + ',' + cy;
+                            if (visited[key]) break;
+                            visited[key] = true;
+                            branchSet[key] = true;
+                            // 找下一个（度数≤2且不在主路）
+                            var foundNext = false;
+                            for (var nd = 0; nd < 4; nd++) {
+                                if (this.maze[cy][cx][nd]) continue;
+                                var nx = cx + DIR_DX[nd], ny = cy + DIR_DY[nd];
+                                if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                                if (solSet[nx + ',' + ny]) continue;
+                                var nOpen = 0;
+                                for (var nd2 = 0; nd2 < 4; nd2++) {
+                                    if (!this.maze[ny][nx][nd2]) nOpen++;
+                                }
+                                if (nOpen <= 2) {
+                                    cx = nx; cy = ny; foundNext = true; break;
+                                }
+                            }
+                            if (!foundNext) break;
+                        }
+                    }
+                }
+            }
+            return branchSet;
+        }
+
+        /**
+         * 计算格子到主路的最短曼哈顿距离
+         */
+        _distanceToSolutionPath(x, y) {
+            var minDist = Infinity;
+            for (var i = 0; i < this.solutionPath.length; i++) {
+                var p = this.solutionPath[i];
+                var d = Math.abs(x - p.x) + Math.abs(y - p.y);
+                if (d < minDist) minDist = d;
+            }
+            return minDist;
+        }
+
+        /**
+         * 统计新解法路径上被单向门阻挡的边数
+         */
+        _countDoorsOnPath(solutionPath, oneWayWalls) {
+            var count = 0;
+            for (var i = 0; i < solutionPath.length - 1; i++) {
+                var a = solutionPath[i], b = solutionPath[i+1];
+                var dx = b.x - a.x, dy = b.y - a.y;
+                var wi = getWallIndex(dx, dy);
+                if (wi < 0) continue;
+                // 检查从b能否进入a（反向边是否被阻挡）
+                var opp = OPP_ENTRY[wi];
+                if (oneWayWalls[b.y][b.x][opp]) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        /**
+         * 验证约束条件（临时激活所有pending门后）
+         * @param {number} originalLength 原解法长度
+         * @param {number} maxOnMain 主路最多单向门数
+         * @param {number} lenFactor 绕路长度倍数限制
+         */
+        _verifyConstraints(originalLength, maxOnMain, lenFactor) {
+            // 1. 构建临时单向门状态（合并已有 + pending）
+            var size = this.getLevelMazeSize();
+            var tempOneWay = [];
+            for (var y = 0; y < size; y++) {
+                tempOneWay[y] = [];
+                for (var x = 0; x < size; x++) {
+                    tempOneWay[y][x] = [false, false, false, false];
+                }
+            }
+            // 复制已激活的
+            for (var y = 0; y < size; y++) {
+                for (var x = 0; x < size; x++) {
+                    for (var d = 0; d < 4; d++) {
+                        tempOneWay[y][x][d] = this.oneWayWalls[y][x][d];
+                    }
+                }
+            }
+            // 激活pending门
+            for (var i = 0; i < this._pendingOneWayWalls.length; i++) {
+                var p = this._pendingOneWayWalls[i];
+                var wiBack = getWallIndex(p.x - p.nx, p.y - p.ny);
+                if (wiBack >= 0) {
+                    tempOneWay[p.ny][p.nx][wiBack] = true;
+                }
+            }
+
+            // 2. BFS检查可达性
+            var reachable = this._bfsReachableWithOneWay(
+                this.start.x, this.start.y,
+                this.end.x, this.end.y,
+                size, tempOneWay
+            );
+            if (!reachable) return { ok: false, reason: 'unreachable' };
+
+            // 3. 计算新解法长度
+            var newPath = this._bfsPathWithOneWay(
+                this.start.x, this.start.y,
+                this.end.x, this.end.y,
+                size, tempOneWay
+            );
+            if (!newPath) return { ok: false, reason: 'no path' };
+            var newLength = newPath.length;
+
+            // 4. 绕路检查
+            if (newLength > originalLength * lenFactor) {
+                return { ok: false, reason: 'too long', newLength: newLength, originalLength: originalLength };
+            }
+
+            // 5. 主路单向门数量检查
+            var doorsOnMain = this._countDoorsOnPath(newPath, tempOneWay);
+            if (doorsOnMain > maxOnMain) {
+                return { ok: false, reason: 'too many on main path', count: doorsOnMain };
+            }
+
+            return { ok: true, newLength: newLength, doorsOnMain: doorsOnMain };
+        }
+
+        /**
+         * BFS检查可达性（考虑单向门）
+         */
+        _bfsReachableWithOneWay(sx, sy, tx, ty, size, oneWayWalls) {
+            if (sx === tx && sy === ty) return true;
+            var seen = [];
+            for (var i = 0; i < size; i++) {
+                seen[i] = [];
+                for (var j = 0; j < size; j++) seen[i][j] = false;
+            }
+            var q = [{ x: sx, y: sy }];
+            seen[sy][sx] = true;
+            while (q.length > 0) {
+                var c = q.shift();
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[c.y][c.x][d]) continue;  // 物理墙
+                    var nx = c.x + DIR_DX[d], ny = c.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (seen[ny][nx]) continue;
+                    var opp = OPP_ENTRY[d];
+                    if (oneWayWalls[ny][nx][opp]) continue;  // 单向阻挡
+                    seen[ny][nx] = true;
+                    if (nx === tx && ny === ty) return true;
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return false;
+        }
+
+        /**
+         * BFS获取路径（考虑单向门）
+         */
+        _bfsPathWithOneWay(sx, sy, tx, ty, size, oneWayWalls) {
+            if (sx === tx && sy === ty) return [{ x: sx, y: sy }];
+            var seen = [];
+            for (var i = 0; i < size; i++) {
+                seen[i] = [];
+                for (var j = 0; j < size; j++) seen[i][j] = false;
+            }
+            var parent = {};
+            var q = [{ x: sx, y: sy }];
+            seen[sy][sx] = true;
+            parent[sx + ',' + sy] = null;
+            while (q.length > 0) {
+                var c = q.shift();
+                if (c.x === tx && c.y === ty) {
+                    var path = [], cur = { x: tx, y: ty };
+                    while (cur) {
+                        path.push({ x: cur.x, y: cur.y });
+                        var pk = parent[cur.x + ',' + cur.y];
+                        cur = pk;
+                    }
+                    path.reverse();
+                    return path;
+                }
+                for (var d = 0; d < 4; d++) {
+                    if (this.maze[c.y][c.x][d]) continue;
+                    var nx = c.x + DIR_DX[d], ny = c.y + DIR_DY[d];
+                    if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                    if (seen[ny][nx]) continue;
+                    var opp = OPP_ENTRY[d];
+                    if (oneWayWalls[ny][nx][opp]) continue;
+                    seen[ny][nx] = true;
+                    parent[nx + ',' + ny] = { x: c.x, y: c.y };
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return null;
+        }
+
+        /**
+         * 标记潜在单向门候选边并预置橙墙（智能分层版）
+         * 橙墙画在两格中间的通道上。
+         * 保证至少有一解，且解法绕路不超过1.5倍。
+         */
+        markLatentOneWayCandidates() {
+            this.latentEdgeSet = {};
+            this._pendingOneWayWalls = [];
+            if (!this.oneWayMechanismUnlocked()) return;
+
+            var size = this.getLevelMazeSize();
+            this.calculateSolution();
+            var originalLength = this.solutionPath.length;
+
+            // 1. 构建主路集合
+            var solSet = {};
+            for (var si = 0; si < this.solutionPath.length; si++) {
+                var sp = this.solutionPath[si];
+                solSet[sp.x + ',' + sp.y] = true;
+            }
+
+            // 2. 构建死胡同分支集合
+            var branchSet = this._buildBranchPathSet(solSet);
+
+            // 3. 生成所有候选边（排除边缘）
+            var base = Math.max(2, Math.floor(size * size / 22));
+            if (this._cycleChord) base += 2;
+            var target = Math.max(2, Math.min(14, base));
+
+            var allCandidates = [];
+            for (var y = 0; y < size; y++) {
+                for (var x = 0; x < size; x++) {
+                    for (var d = 0; d < 4; d++) {
+                        if (this.maze[y][x][d]) continue;
+                        var nx = x + DIR_DX[d];
+                        var ny = y + DIR_DY[d];
+                        if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                        allCandidates.push({ x: x, y: y, d: d, nx: nx, ny: ny });
+                    }
+                }
+            }
+
+            // 4. 分类
+            var cycleEdges = [], branchEdges = [], farEdges = [];
+            for (var i = 0; i < allCandidates.length; i++) {
+                var c = allCandidates[i];
+                var isCycle = this._edgeOnCycleOrChord(c.x, c.y, c.d);
+                var inBranch = (branchSet[c.x + ',' + c.y] || branchSet[c.nx + ',' + c.ny]);
+                var dist = Math.min(
+                    this._distanceToSolutionPath(c.x, c.y),
+                    this._distanceToSolutionPath(c.nx, c.ny)
+                );
+
+                if (isCycle) {
+                    cycleEdges.push(c);
+                } else if (inBranch) {
+                    branchEdges.push(c);
+                } else if (dist >= 3) {
+                    farEdges.push(c);
+                }
+                // 其余归为普通边（也放入farEdges作为补充）
+            }
+
+            // 5. 分层配额（挑战版：环50%·分支20%·远30%；主路最多4个；绕路2.5倍）
+            var quotas = [
+                { edges: this._shuffle(cycleEdges),  maxCount: Math.ceil(target * 0.50),  maxOnMain: 4, lenFactor: 2.5 },
+                { edges: this._shuffle(branchEdges), maxCount: Math.ceil(target * 0.20),  maxOnMain: 4, lenFactor: 2.5 },
+                { edges: this._shuffle(farEdges),    maxCount: Math.ceil(target * 0.30),  maxOnMain: 2, lenFactor: 2.5 }
+            ];
+
+            // 6. 按配额放置
+            var totalPicked = 0;
+            for (var q = 0; q < quotas.length; q++) {
+                var quota = quotas[q];
+                var placed = 0;
+                for (var i = 0; i < quota.edges.length && placed < quota.maxCount && totalPicked < target; i++) {
+                    var c = quota.edges[i];
+                    var key = this._canonicalEdgeKey(c.x, c.y, c.d);
+                    if (!key || this.latentEdgeSet[key]) continue;
+
+                    // 临时加入并验证
+                    this._pendingOneWayWalls.push({
+                        x: c.x, y: c.y, d: c.d, nx: c.nx, ny: c.ny
+                    });
+                    this.latentEdgeSet[key] = true;
+
+                    var verify = this._verifyConstraints(originalLength, quota.maxOnMain, quota.lenFactor);
+                    if (verify.ok) {
+                        placed++;
+                        totalPicked++;
+                    } else {
+                        // 撤回
+                        this._pendingOneWayWalls.pop();
+                        delete this.latentEdgeSet[key];
+                    }
+                }
+            }
+
+            // 7. 兜底：如果总数<2，从剩余候补充（仍要验证）
+            if (totalPicked < 2) {
+                var remaining = allCandidates.filter(function(c) {
+                    var k = this._canonicalEdgeKey(c.x, c.y, c.d);
+                    return k && !this.latentEdgeSet[k];
+                }.bind(this));
+                this._shuffle(remaining);
+                for (var r = 0; r < remaining.length && totalPicked < 2; r++) {
+                    var c = remaining[r];
+                    var key = this._canonicalEdgeKey(c.x, c.y, c.d);
+                    this._pendingOneWayWalls.push({
+                        x: c.x, y: c.y, d: c.d, nx: c.nx, ny: c.ny
+                    });
+                    this.latentEdgeSet[key] = true;
+                    var verify = this._verifyConstraints(originalLength, 2, 2.5);  // 兜底：主路最多2个，绕路2.5倍
+                    if (!verify.ok) {
+                        this._pendingOneWayWalls.pop();
+                        delete this.latentEdgeSet[key];
+                    } else {
+                        totalPicked++;
+                    }
+                }
+            }
+
+            // 8. 保存模板（用于本关重开）
+            this._pendingOneWayWallsTemplate = this._pendingOneWayWalls.slice();
+        }
+
+        /**
+         * 数组随机打乱（Fisher-Yates）
+         */
+        _shuffle(arr) {
+            for (var i = arr.length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+            }
+            return arr;
+        }
+
+        /** 首次走过潜在单向门时激活单向墙（阻挡回程）+ 在通道上显示方向箭头 */
+        _tryLockLatentDoor(fromX, fromY, toX, toY) {
+            if (!this.oneWayMechanismUnlocked()) return;  // 单向门机制未解锁则跳过
+            var dx = toX - fromX;
+            var dy = toY - fromY;
+            var wi = getWallIndex(dx, dy);
+            if (wi < 0) return;
+            var key = this._canonicalEdgeKey(fromX, fromY, wi);
+            if (!key || !this.latentEdgeSet[key]) return;
+            if (this._lockedEdgeKeys[key]) return;
+
+            // 激活单向墙（从目标格子回程时被挡）
+            var wiBack = getWallIndex(fromX - toX, fromY - toY);
+            if (wiBack >= 0) {
+                this.oneWayWalls[toY][toX][wiBack] = true;
+            }
+            this._lockedEdgeKeys[key] = true;
+
+            // 从待激活列表中移除（不再显示纯橙色门）
+            this._pendingOneWayWalls = this._pendingOneWayWalls.filter(function(p) {
+                return !(p.x === fromX && p.y === fromY && p.d === wi);
+            });
+
+            // 在A-B通道中间显示从A指向B的箭头
+            this.doorArrows.push({
+                fromX: fromX, fromY: fromY,
+                toX: toX, toY: toY,
+                direction: wi // 0=上, 1=右, 2=下, 3=左（从from到to的方向）
+            });
+
+            // 检查是否踩到黄色按钮（触发黄门）
+            this._tryActivateYellowButton(toX, toY);
+
+            this._cacheStaticContent();
+            this.calculateSolution();
+        }
+
+        /**
+         * 检查玩家位置是否踩到黄色按钮，激活对应黄门
+         */
+        _tryActivateYellowButton(px, py) {
+            var btn = this.yellowButtons[py][px];
+            if (!btn || btn.active) return;
+            // 激活按钮，打开对应的黄门
+            btn.active = true;
+            // 移除黄门（双向打通）
+            this.yellowDoors[btn.targetY][btn.targetX][btn.dir] = false;
+            // 记录已打开的门用于渲染
+            this.activeYellowDoors.push({
+                x: btn.targetX, y: btn.targetY, dir: btn.dir,
+                ox: px, oy: py  // 按钮位置
+            });
+        }
+
+        // ==================== 离屏缓存 ====================
+
+        _cacheStaticContent() {
+            var ctx = this.offCtx;
+            var size = this.getLevelMazeSize();
+            var cs = this.cellSize;
+            var ww = this.wallWidth;
+            var cw = this.offCanvas.width;
+            var ch = this.offCanvas.height;
+
+            ctx.clearRect(0, 0, cw, ch);
+
+            ctx.fillStyle = this.config.pathColor;
+            ctx.fillRect(0, 0, cw, ch);
+
+            ctx.fillStyle = this.config.wallColor;
+
+            // 水平墙
+            for (var y = 0; y < size; y++) {
+                for (var x = 0; x < size; x++) {
+                    var walls = this.maze[y][x];
+                    if (walls[0]) ctx.fillRect(x * cs, y * cs, cs + ww, ww);
+                    if (walls[2]) ctx.fillRect(x * cs, (y+1)*cs, cs + ww, ww);
+                }
+            }
+            // 垂直墙
+            for (var y = 0; y < size; y++) {
+                for (var x = 0; x < size; x++) {
+                    var walls2 = this.maze[y][x];
+                    if (walls2[3]) ctx.fillRect(x*cs, y*cs, ww, cs + ww);
+                    if (walls2[1]) ctx.fillRect((x+1)*cs, y*cs, ww, cs + ww);
+                }
+            }
+
+            // 单向墙（与蓝墙同几何，仅出现在物理开口上）
+            if (this.oneWayMechanismUnlocked()) {
+                ctx.fillStyle = this.config.oneWayWallColor;
+                for (var oy = 0; oy < size; oy++) {
+                    for (var ox = 0; ox < size; ox++) {
+                        var ow = this.oneWayWalls[oy][ox];
+                        if (!ow[0] && !ow[1] && !ow[2] && !ow[3]) continue;
+                        if (ow[0]) ctx.fillRect(ox * cs, oy * cs, cs + ww, ww);
+                        if (ow[2]) ctx.fillRect(ox * cs, (oy + 1) * cs, cs + ww, ww);
+                        if (ow[3]) ctx.fillRect(ox * cs, oy * cs, ww, cs + ww);
+                        if (ow[1]) ctx.fillRect((ox + 1) * cs, oy * cs, ww, cs + ww);
+                    }
+                }
+            }
+
+            // 黄色门（关闭的黄门显示，已打开的不显示）
+            if (this.yellowMechanismUnlocked()) {
+                ctx.fillStyle = '#ffd166';
+                for (var yy = 0; yy < size; yy++) {
+                    for (var xx = 0; xx < size; xx++) {
+                        var yd = this.yellowDoors[yy][xx];
+                        if (!yd[0] && !yd[1] && !yd[2] && !yd[3]) continue;
+                        if (yd[0]) ctx.fillRect(xx * cs, yy * cs, cs + ww, ww);
+                        if (yd[2]) ctx.fillRect(xx * cs, (yy + 1) * cs, cs + ww, ww);
+                        if (yd[3]) ctx.fillRect(xx * cs, yy * cs, ww, cs + ww);
+                        if (yd[1]) ctx.fillRect((xx + 1) * cs, yy * cs, ww, cs + ww);
+                    }
+                }
+
+                // 黄色按钮（在格子中心画小圆点+文字）
+                ctx.fillStyle = '#ffd166';
+                for (var by = 0; by < size; by++) {
+                    for (var bx = 0; bx < size; bx++) {
+                        var btn = this.yellowButtons[by][bx];
+                        if (!btn) continue;
+                        var cp = this.cellToPixel(bx, by);
+                        ctx.beginPath();
+                        ctx.arc(cp.x, cp.y, cs / 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 按钮文字
+                        ctx.fillStyle = '#000';
+                        ctx.font = Math.max(10, Math.floor(cs / 2)) + 'px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('按', cp.x, cp.y);
+                        ctx.fillStyle = '#ffd166';
+                    }
+                }
+            }
+
+            // 待激活的橙墙（画在两格中间的通道上，仅单向门机制显示）
+            if (this._pendingOneWayWalls && this.oneWayMechanismUnlocked()) {
+                ctx.fillStyle = this.config.oneWayWallColor;
+                for (var i = 0; i < this._pendingOneWayWalls.length; i++) {
+                    var p = this._pendingOneWayWalls[i];
+                    // 计算通道中心点位置
+                    var cx = (p.x * cs + ww / 2 + cs / 2 + p.nx * cs + ww / 2 + cs / 2) / 2;
+                    var cy = (p.y * cs + ww / 2 + cs / 2 + p.ny * cs + ww / 2 + cs / 2) / 2;
+                    // 画一个小方块表示橙墙（在通道中间）
+                    var blockSize = ww * 1.5;
+                    ctx.fillRect(cx - blockSize / 2, cy - blockSize / 2, blockSize, blockSize);
+                }
+            }
+
+            // 起点
+            var sp = this.cellToPixel(this.start.x, this.start.y);
+            ctx.fillStyle = this.config.startColor;
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, cs/3, 0, Math.PI*2);
+            ctx.fill();
+
+            // 终点
+            var ep = this.cellToPixel(this.end.x, this.end.y);
+            ctx.fillStyle = this.config.endColor;
+            ctx.beginPath();
+            ctx.arc(ep.x, ep.y, cs/3, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // ==================== 渲染系统 ====================
+
+        draw() {
+            var ctx = this.ctx;
+            var cs = this.cellSize;
+            var ww = this.wallWidth;
+
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            var useFog = this.fogEnabled && this.config.useFogOfWar;
+
+            if (useFog) {
+                ctx.fillStyle = this.config.fogColor;
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                ctx.save();
+
+                if (this.visionMode === 'circular') {
+                    var px = this.player.x;
+                    var py = this.player.y;
+                    if (this.animating && this.animFrom && this.animTo) {
+                        var t = this._easeOut(this.animProgress);
+                        px = this.animFrom.x + (this.animTo.x - this.animFrom.x) * t;
+                        py = this.animFrom.y + (this.animTo.y - this.animFrom.y) * t;
+                    }
+                    var pc = this.cellToPixel(px, py);
+                    var radius = this.config.visionRadius * cs;
+                    ctx.beginPath();
+                    ctx.arc(pc.x, pc.y, radius, 0, Math.PI * 2);
+                } else {
+                    var rect = this._getRectVisionRect();
+                    ctx.beginPath();
+                    ctx.rect(rect.x, rect.y, rect.w, rect.h);
+                }
+                ctx.clip();
+                ctx.drawImage(this.offCanvas, 0, 0);
+                this._drawDynamicLayer(ctx);
+                this._drawDoorArrows(ctx);
+                ctx.restore();
+            } else {
+                ctx.drawImage(this.offCanvas, 0, 0);
+                this._drawDynamicLayer(ctx);
+                this._drawDoorArrows(ctx);
+            }
+
+            this._drawPlayer(ctx);
+        }
+
+        _drawDynamicLayer(ctx) {
+            var cs = this.cellSize;
+            var ww = this.wallWidth;
+            var size = this.getLevelMazeSize();
+
+            if (this.showVisited) {
+                ctx.fillStyle = this.config.visitedColor;
+                for (var y = 0; y < size; y++) {
+                    for (var x = 0; x < size; x++) {
+                        if (this.visited[y][x]) {
+                            ctx.fillRect(x * cs + ww/2 + cs/4, y * cs + ww/2 + cs/4, cs/2, cs/2);
+                        }
+                    }
+                }
+            }
+
+            if (this.showSolution && this.solutionPath.length > 0) {
+                ctx.strokeStyle = this.config.hintColor;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                var p0 = this.cellToPixel(this.solutionPath[0].x, this.solutionPath[0].y);
+                ctx.moveTo(p0.x, p0.y);
+                for (var i = 1; i < this.solutionPath.length; i++) {
+                    var p = this.cellToPixel(this.solutionPath[i].x, this.solutionPath[i].y);
+                    ctx.lineTo(p.x, p.y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        /** 已锁定单向门上的允许方向箭头（画在A-B通道中间） */
+        _drawDoorArrows(ctx) {
+            if (!this.doorArrows || this.doorArrows.length === 0) return;
+            var cs = this.cellSize;
+            for (var i = 0; i < this.doorArrows.length; i++) {
+                var a = this.doorArrows[i];
+                // 箭头画在A-B通道中间
+                var pFrom = this.cellToPixel(a.fromX, a.fromY);
+                var pTo = this.cellToPixel(a.toX, a.toY);
+                var mx = (pFrom.x + pTo.x) / 2;
+                var my = (pFrom.y + pTo.y) / 2;
+                var ang = Math.atan2(pTo.y - pFrom.y, pTo.x - pFrom.x);
+                var sz = Math.max(5, cs * 0.18);
+                ctx.save();
+                ctx.translate(mx, my);
+                ctx.rotate(ang);
+                ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                ctx.strokeStyle = 'rgba(26,26,46,0.85)';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(sz, 0);
+                ctx.lineTo(-sz * 0.55, sz * 0.48);
+                ctx.lineTo(-sz * 0.55, -sz * 0.48);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        _drawPlayer(ctx) {
+            var cs = this.cellSize;
+            var px = this.player.x;
+            var py = this.player.y;
+
+            if (this.animating && this.animFrom && this.animTo) {
+                var t = this._easeOut(this.animProgress);
+                px = this.animFrom.x + (this.animTo.x - this.animFrom.x) * t;
+                py = this.animFrom.y + (this.animTo.y - this.animFrom.y) * t;
+            }
+
+            var pc = this.cellToPixel(px, py);
+
+            ctx.fillStyle = this.config.playerColor;
+            ctx.beginPath();
+            ctx.arc(pc.x, pc.y, cs / 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(pc.x - cs/8, pc.y - cs/8, cs/8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        _getRectVisionRect() {
+            var cs = this.cellSize;
+            var ww = this.wallWidth;
+            var px = this.player.x, py = this.player.y;
+            var cH = this.canvas.height;
+            var cW = this.canvas.width;
+
+            if (this.playerDirection.x === 0 && this.playerDirection.y === -1) {
+                var rY = Math.max(0,(py-3)*cs);
+                return { x: px*cs, y: rY, w: cs+ww, h: Math.min(4*cs+ww,(py+1)*cs+ww-rY) };
+            }
+            if (this.playerDirection.x === 0 && this.playerDirection.y === 1) {
+                return { x: px*cs, y: py*cs, w: cs+ww, h: Math.min(4*cs+ww,cH-py*cs) };
+            }
+            if (this.playerDirection.x === 1) {
+                return { x: px*cs, y: py*cs, w: Math.min(4*cs+ww,cW-px*cs), h: cs+ww };
+            }
+            if (this.playerDirection.x === -1) {
+                var rX = Math.max(0,(px-3)*cs);
+                return { x: rX, y: py*cs, w: Math.min(4*cs+ww,(px+1)*cs+ww-rX), h: cs+ww };
+            }
+            // fallback to circular
+            this.visionMode = 'circular';
+            var r = this.config.visionRadius * cs;
+            var c = this.cellToPixel(px, py);
+            return { x: c.x-r, y: c.y-r, w: r*2, h: r*2 };
+        }
+
+        _easeOut(t) {
+            return t * (2 - t);
+        }
+
+        // ==================== 移动逻辑 ====================
+
+        movePlayer(dx, dy) {
+            if (this.gameWon || this.animating) return;
+
+            if (!this._canPassFromTo(this.player.x, this.player.y, dx, dy)) return;
+
+            if (!this.gameStarted) {
+                this.gameStarted = true;
+                this.startTime = Date.now();
+            }
+
+            this.animFrom = { x: this.player.x, y: this.player.y };
+            this.animTo = { x: this.player.x + dx, y: this.player.y + dy };
+            this.animating = true;
+            this.animStart = performance.now();
+            this.animProgress = 0;
+            this.playerDirection = { x: dx, y: dy };
+
+            this._animationLoop();
+        }
+
+        _animationLoop() {
+            if (!this.animating) return;
+
+            var elapsed = performance.now() - this.animStart;
+            var duration = this.config.animDuration;
+            this.animProgress = Math.min(elapsed / duration, 1);
+
+            this.draw();
+            this.updateStatus();
+
+            if (this.animProgress < 1) {
+                var self = this;
+                this.animFrameId = requestAnimationFrame(function() { self._animationLoop(); });
+            } else {
+                this.animating = false;
+                this.animFrameId = null;
+                this.animProgress = 1;
+                this.player.x = this.animTo.x;
+                this.player.y = this.animTo.y;
+                this.visited[this.player.y][this.player.x] = true;
+
+                this._tryLockLatentDoor(this.animFrom.x, this.animFrom.y, this.animTo.x, this.animTo.y);
+
+                if (this.player.x === this.end.x && this.player.y === this.end.y) {
+                    this.handleWin();
+                } else {
+                    this.draw();
+                    this.updateStatus();
+                }
+            }
+        }
+
+        handleWin() {
+            if (this.gameWon) return;  // 防重复调用
+            this.gameWon = true;
+            this.animating = false;  // 停止动画循环标志
+            if (this.animFrameId) {  // 取消待处理的动画帧
+                cancelAnimationFrame(this.animFrameId);
+                this.animFrameId = null;
+            }
+            this.fogEnabled = false;
+            this.endTime = Date.now();
+            var timeTaken = ((this.endTime - this.startTime) / 1000).toFixed(2);
+            var levelInfo = '第 ' + this.currentLevel + ' 关';
+            // 直接显示通关状态，1.5秒后自动进入下一关
+            var self = this;
+            document.getElementById('status').innerHTML =
+                '<span class="win-message">🎉 ' + levelInfo + '通关！用时: ' + timeTaken + '秒</span>';
+            this.draw();
+            setTimeout(function() { self.nextLevel(); }, 1500);
+        }
+
+        nextLevel() {
+            this.currentLevel++;
+            this.gameWon = false;
+            this.fogEnabled = true;
+            this.generateMaze();
+            this.draw();
+            this.updateStatus();
+        }
+
+        updateStatus() {
+            var el = document.getElementById('status');
+            if (!el) return;
+            if (this.gameWon) return;
+            var sz = this.getLevelMazeSize();
+            if (this.gameStarted) {
+                var ct = ((Date.now() - this.startTime) / 1000).toFixed(2);
+                var vm = this.visionMode === 'circular' ? '圆形(3×3)' : '矩形(向前)';
+                var fog = this.fogEnabled ? '开' : '关';
+                // 机制显示
+                var mech = [];
+                if (this.yellowMechanismUnlocked()) mech.push('黄门');
+                if (this.oneWayMechanismUnlocked()) mech.push('单向门');
+                var mechStr = mech.length > 0 ? mech.join('+') : '纯迷宫';
+                // 黄门信息
+                var yellowInfo = '';
+                if (this.yellowMechanismUnlocked()) {
+                    var totalDoors = 0, openedDoors = 0;
+                    for (var y = 0; y < sz; y++) for (var x = 0; x < sz; x++) {
+                        for (var d = 0; d < 4; d++) {
+                            if (this.yellowDoors[y][x][d]) totalDoors++;
+                        }
+                    }
+                    openedDoors = this.activeYellowDoors.length;
+                    if (totalDoors > 0) {
+                        yellowInfo = ' | 黄门:' + openedDoors + '/' + totalDoors;
+                    }
+                }
+                el.textContent = '第' + this.currentLevel + '关 ' + sz + '×' + sz + ' | ' + mechStr + yellowInfo + ' | (' + this.player.x + ',' + this.player.y + ') | ' + ct + 's | 雾' + fog + ' | ' + vm;
+            } else {
+                var hint = '';
+                if (this.currentLevel < 3) {
+                    hint = '纯迷宫（无机关）';
+                } else if (this.currentLevel < 6) {
+                    hint = '黄门机关：找到黄色按钮打开主路黄门';
+                } else if (this.currentLevel < 9) {
+                    hint = '黄门+单向门：单向门走过显方向，只能前进';
+                } else {
+                    hint = '多机制累加：黄门+单向门+新机制';
+                }
+                el.textContent = '第' + this.currentLevel + '关 · ' + hint + ' · 方向键开始 · 本关重开同图';
+            }
+        }
+
+        // ==================== 事件绑定 ====================
+
+        setupEventListeners() {
+            var self = this;
+            var startPosSel = document.getElementById('startPos');
+            var endPosSel = document.getElementById('endPos');
+
+            startPosSel.addEventListener('change', function() {
+                self.startPosition = startPosSel.value;
+                self.generateMaze();
+                self.draw();
+                self.updateStatus();
+            });
+
+            endPosSel.addEventListener('change', function() {
+                self.endPosition = endPosSel.value;
+                self.generateMaze();
+                self.draw();
+                self.updateStatus();
+            });
+
+            // 键盘事件
+            document.addEventListener('keydown', function(e) {
+                switch (e.key) {
+                    case 'ArrowUp': case 'w': case 'W':
+                        self.movePlayer(0, -1); break;
+                    case 'ArrowDown': case 's': case 'S':
+                        self.movePlayer(0, 1); break;
+                    case 'ArrowLeft': case 'a': case 'A':
+                        self.movePlayer(-1, 0); break;
+                    case 'ArrowRight': case 'd': case 'D':
+                        self.movePlayer(1, 0); break;
+                    case ' ': case 'Space':
+                        self.visionMode = self.visionMode === 'circular' ? 'rectangular' : 'circular';
+                        self.draw(); self.updateStatus();
+                        e.preventDefault();
+                        break;
+                }
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                }
+            });
+
+            // 按钮
+            document.getElementById('startBtn').addEventListener('click', function() {
+                self.generateMaze();
+                self.draw();
+                self.updateStatus();
+            });
+
+            var instructionsEl = document.querySelector('.instructions');
+            var showInstBtn = document.getElementById('showInstructionsBtn');
+            showInstBtn.addEventListener('click', function() {
+                instructionsEl.classList.toggle('visible');
+                showInstBtn.textContent = instructionsEl.classList.contains('visible') ? '隐藏游戏说明' : '显示游戏说明';
+            });
+
+            // 设置面板
+            var settingsPanel = document.getElementById('settingsPanel');
+            var fogToggle = document.getElementById('fogToggle');
+            document.getElementById('settingsBtn').addEventListener('click', function() {
+                if (settingsPanel.style.display !== 'block') {
+                    fogToggle.checked = self.fogEnabled;
+                    settingsPanel.style.display = 'block';
+                } else {
+                    settingsPanel.style.display = 'none';
+                }
+            });
+
+            document.getElementById('applySettingsBtn').addEventListener('click', function() {
+                self.fogEnabled = fogToggle.checked;
+                settingsPanel.style.display = 'none';
+                self.draw();
+                self.updateStatus();
+            });
+
+            // 提示面板
+            var hintsPanel = document.getElementById('hintsPanel');
+            var solTgl = document.getElementById('solutionToggle');
+            var visTgl = document.getElementById('visitedToggle');
+
+            document.getElementById('hintsBtn').addEventListener('click', function() {
+                if (hintsPanel.style.display !== 'block') {
+                    solTgl.checked = self.showSolution;
+                    visTgl.checked = self.showVisited;
+                    hintsPanel.style.display = 'block';
+                } else {
+                    hintsPanel.style.display = 'none';
+                }
+            });
+
+            document.getElementById('applyHintsBtn').addEventListener('click', function() {
+                self.showSolution = solTgl.checked;
+                self.showVisited = visTgl.checked;
+                hintsPanel.style.display = 'none';
+                self.draw();
+                self.updateStatus();
+            });
+
+            // 触摸控制（用 touchActive 避免 clientX=0 时被误判为未开始）
+            var touchActive = false;
+            var touchStartX = 0, touchStartY = 0;
+            this.canvas.addEventListener('touchstart', function(e) {
+                touchActive = true;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                e.preventDefault();
+            }, { passive: false });
+
+            this.canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+
+            this.canvas.addEventListener('touchend', function(e) {
+                if (!touchActive) return;
+                touchActive = false;
+                var dx = e.changedTouches[0].clientX - touchStartX;
+                var dy = e.changedTouches[0].clientY - touchStartY;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    self.movePlayer(dx > 0 ? 1 : -1, 0);
+                } else {
+                    self.movePlayer(0, dy > 0 ? 1 : -1);
+                }
+                e.preventDefault();
+            }, { passive: false });
+        }
+
+        // ==================== 工具方法 ====================
+
+        countTotalPaths() {
+            var size = this.getLevelMazeSize();
+            var total = 0;
+            for (var y = 0; y < size; y++) {
+                for (var x = 0; x < size; x++) {
+                    if (!this.maze[y][x][0] || !this.maze[y][x][1] || !this.maze[y][x][2] || !this.maze[y][x][3]) total++;
+                }
+            }
+            return { totalCells: total, solutionLength: this.solutionPath.length, solutionRatio: this.solutionPath.length / Math.max(1, total) };
+        }
+    }
+
+    // ==================== 启动 ====================
+
+    var game = new MazeGame();
+    window.addEventListener('DOMContentLoaded', function() { game.init(); });
+    </script>
+</body>
+</html>
